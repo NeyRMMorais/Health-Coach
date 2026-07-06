@@ -127,9 +127,20 @@ export default function FoodLogSection({ logs, profile, onAddLog, onDeleteLog }:
       setCarbs('');
       setFats('');
       setAiInput('');
-    } catch (err) {
-      console.error(err);
-      setFormError('Failed to save food log to Firestore database.');
+    } catch (err: any) {
+      console.error('Error logging food:', err);
+      let errMsg = 'Failed to save food log to Firestore database.';
+      try {
+        const parsed = JSON.parse(err.message);
+        if (parsed && parsed.error) {
+          errMsg = `Failed to save food log to Firestore database: ${parsed.error}`;
+        }
+      } catch {
+        if (err?.message) {
+          errMsg = `Failed to save food log to Firestore database: ${err.message}`;
+        }
+      }
+      setFormError(errMsg);
     } finally {
       setIsSubmitting(false);
     }

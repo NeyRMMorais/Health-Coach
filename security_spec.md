@@ -55,7 +55,7 @@ let testEnv: RulesTestEnvironment;
 
 beforeAll(async () => {
   testEnv = await initializeTestEnvironment({
-    projectId: 'health-coach-project',
+    projectId: 'health-coach-501615',
     firestore: {
       rules: require('fs').readFileSync('firestore.rules', 'utf8'),
     },

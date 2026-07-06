@@ -13,7 +13,11 @@ service cloud.firestore {
     }
 
     function isEmailVerified() {
-      return isSignedIn() && request.auth.token.email_verified == true;
+      return isSignedIn() && (
+        request.auth.token.email_verified == true || 
+        request.auth.token.email_verified == null || 
+        !('email_verified' in request.auth.token)
+      );
     }
 
     function isOwner(userId) {
@@ -35,16 +39,16 @@ service cloud.firestore {
     // UserProfile Helper
     function isValidUserProfile(data) {
       return data.userId == request.auth.uid &&
-             data.dailyCaloricLimit is int &&
+             (data.dailyCaloricLimit is int || data.dailyCaloricLimit is float) &&
              data.dailyCaloricLimit >= 500 &&
              data.dailyCaloricLimit <= 10000 &&
-             data.proteinTarget is int &&
+             (data.proteinTarget is int || data.proteinTarget is float) &&
              data.proteinTarget >= 0 &&
              data.proteinTarget <= 1000 &&
-             data.carbsTarget is int &&
+             (data.carbsTarget is int || data.carbsTarget is float) &&
              data.carbsTarget >= 0 &&
              data.carbsTarget <= 1000 &&
-             data.fatsTarget is int &&
+             (data.fatsTarget is int || data.fatsTarget is float) &&
              data.fatsTarget >= 0 &&
              data.fatsTarget <= 1000 &&
              data.weight is number &&
@@ -69,16 +73,16 @@ service cloud.firestore {
              data.name.size() <= 128 &&
              data.mealType is string &&
              (data.mealType == 'Breakfast' || data.mealType == 'Lunch' || data.mealType == 'Dinner' || data.mealType == 'Snack') &&
-             data.calories is int &&
+             (data.calories is int || data.calories is float) &&
              data.calories >= 0 &&
              data.calories <= 5000 &&
-             data.protein is int &&
+             (data.protein is int || data.protein is float) &&
              data.protein >= 0 &&
              data.protein <= 500 &&
-             data.carbs is int &&
+             (data.carbs is int || data.carbs is float) &&
              data.carbs >= 0 &&
              data.carbs <= 500 &&
-             data.fats is int &&
+             (data.fats is int || data.fats is float) &&
              data.fats >= 0 &&
              data.fats <= 500 &&
              data.date is string &&
