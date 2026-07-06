@@ -1,0 +1,117 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with goals and biometric data",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string"
+        },
+        "dailyCaloricLimit": {
+          "type": "integer"
+        },
+        "proteinTarget": {
+          "type": "integer"
+        },
+        "carbsTarget": {
+          "type": "integer"
+        },
+        "fatsTarget": {
+          "type": "integer"
+        },
+        "weight": {
+          "type": "number"
+        },
+        "targetWeight": {
+          "type": "number"
+        },
+        "dietaryPreferences": {
+          "type": "array"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "userId",
+        "dailyCaloricLimit",
+        "proteinTarget",
+        "carbsTarget",
+        "fatsTarget"
+      ]
+    },
+    "FoodLog": {
+      "title": "FoodLog",
+      "description": "A food item logged by the user with its calorie and macro counts",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "mealType": {
+          "type": "string",
+          "enum": [
+            "Breakfast",
+            "Lunch",
+            "Dinner",
+            "Snack"
+          ]
+        },
+        "calories": {
+          "type": "integer"
+        },
+        "protein": {
+          "type": "integer"
+        },
+        "carbs": {
+          "type": "integer"
+        },
+        "fats": {
+          "type": "integer"
+        },
+        "date": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "name",
+        "mealType",
+        "calories",
+        "protein",
+        "carbs",
+        "fats",
+        "date",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile and dietary goals"
+    },
+    "/users/{userId}/foodLogs/{logId}": {
+      "schema": "FoodLog",
+      "description": "Daily food log entries for a user"
+    }
+  }
+}

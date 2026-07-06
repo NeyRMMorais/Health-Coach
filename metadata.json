@@ -1,0 +1,6 @@
+{
+  "name": "Health Coach",
+  "description": "Track daily caloric intake, log meals with AI estimation, and generate custom healthy meal recommendations tailored to your goals.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
