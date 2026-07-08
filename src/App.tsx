@@ -37,6 +37,7 @@ import ProfileModal from './components/ProfileModal';
 import MetricCircle from './components/MetricCircle';
 import FoodLogSection from './components/FoodLogSection';
 import MealGenerator from './components/MealGenerator';
+import AnalyticsDashboard from './components/AnalyticsDashboard';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -44,7 +45,7 @@ export default function App() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [foodLogs, setFoodLogs] = useState<FoodLog[]>([]);
   const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'tracker' | 'suggest'>('tracker');
+  const [activeTab, setActiveTab] = useState<'tracker' | 'suggest' | 'analytics'>('tracker');
   const [authError, setAuthError] = useState<string | null>(null);
 
   // Monitor Auth State
@@ -415,8 +416,8 @@ export default function App() {
         {/* Page Container */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 space-y-6">
           
-          {/* Main Visual Tabs (Daily Tracker vs Meal Generator) */}
-          <div className="flex bg-white p-1 rounded-xl border border-slate-100 shadow-sm max-w-sm">
+          {/* Main Visual Tabs (Daily Tracker vs Meal Generator vs Analytics) */}
+          <div className="flex bg-white p-1 rounded-xl border border-slate-100 shadow-sm max-w-md">
             <button
               onClick={() => setActiveTab('tracker')}
               className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all duration-150 ${
@@ -425,7 +426,7 @@ export default function App() {
                   : 'text-slate-600 hover:text-slate-800'
               }`}
             >
-              📊 Daily Tracker
+              📊 Tracker
             </button>
             <button
               onClick={() => setActiveTab('suggest')}
@@ -438,10 +439,20 @@ export default function App() {
               <Sparkles className="h-3 w-3 text-amber-400 fill-amber-400" />
               Meal Suggester
             </button>
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all duration-150 flex items-center justify-center gap-1 ${
+                activeTab === 'analytics'
+                  ? 'bg-slate-900 text-white shadow'
+                  : 'text-slate-600 hover:text-slate-800'
+              }`}
+            >
+              📈 Analytics
+            </button>
           </div>
 
           <AnimatePresence mode="wait">
-            {activeTab === 'tracker' ? (
+            {activeTab === 'tracker' && (
               <motion.div
                 key="tracker-tab"
                 initial={{ opacity: 0, y: 10 }}
@@ -549,7 +560,9 @@ export default function App() {
                   onDeleteLog={handleDeleteLog}
                 />
               </motion.div>
-            ) : (
+            )}
+
+            {activeTab === 'suggest' && (
               <motion.div
                 key="suggest-tab"
                 initial={{ opacity: 0, y: 10 }}
@@ -561,6 +574,20 @@ export default function App() {
                   userGoal={profile?.dailyCaloricLimit ? `Deficit / Limit: ${profile.dailyCaloricLimit} kcal` : 'Eat healthy'}
                   userDietaryPreferences={profile?.dietaryPreferences || []}
                   onLogMeal={handleLogSuggestedMeal}
+                />
+              </motion.div>
+            )}
+
+            {activeTab === 'analytics' && (
+              <motion.div
+                key="analytics-tab"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <AnalyticsDashboard
+                  logs={foodLogs}
+                  profile={profile}
                 />
               </motion.div>
             )}
