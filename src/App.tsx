@@ -28,7 +28,8 @@ import {
   Scale,
   Settings,
   RefreshCw,
-  Heart
+  Heart,
+  Copy
 } from 'lucide-react';
 
 import { auth, db, handleFirestoreError, OperationType } from './firebase';
@@ -47,6 +48,30 @@ export default function App() {
   const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'tracker' | 'suggest' | 'analytics'>('tracker');
   const [authError, setAuthError] = useState<string | null>(null);
+  const [copied, setCopied] = useState<boolean>(false);
+
+  const handleCopyAvailability = () => {
+    const limitVal = profile?.dailyCaloricLimit ?? 2000;
+    const pTargetVal = profile?.proteinTarget ?? 130;
+    const cTargetVal = profile?.carbsTarget ?? 220;
+    const fTargetVal = profile?.fatsTarget ?? 65;
+
+    const remainingCalories = Math.max(0, limitVal - todayCalories);
+    const remainingProtein = Math.max(0, pTargetVal - todayProtein);
+    const remainingCarbs = Math.max(0, cTargetVal - todayCarbs);
+    const remainingFats = Math.max(0, fTargetVal - todayFats);
+
+    const text = `[Availability:
+Calories: ${remainingCalories}/${limitVal}
+Proteins: ${remainingProtein}g/${pTargetVal}g
+Carbohydrates: ${remainingCarbs}g/${cTargetVal}g
+Fats: ${remainingFats}g/${fTargetVal}g]`;
+
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   // Monitor Auth State
   useEffect(() => {
@@ -463,10 +488,24 @@ export default function App() {
                 {/* Visual Bento Dashboard (Calories & Macros Summary) */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {/* Calorie Progress Circle */}
-                  <div className="bg-white rounded-2xl border border-slate-100 shadow-md p-6 flex flex-col items-center justify-center">
+                  <div className="relative bg-white rounded-2xl border border-slate-100 shadow-md p-6 flex flex-col items-center justify-center">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 text-center">
                       Energy Progress (Today)
                     </h3>
+                    {/* Copy Availability Button */}
+                    <button
+                      onClick={handleCopyAvailability}
+                      className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-slate-50 border border-transparent hover:border-slate-100/60 transition shadow-none hover:shadow-sm"
+                      title="Copy remaining availability to clipboard for Gemini"
+                    >
+                      {copied ? (
+                        <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                          ✓ Copied
+                        </span>
+                      ) : (
+                        <Copy className="h-3.5 w-3.5" />
+                      )}
+                    </button>
                     <MetricCircle value={todayCalories} target={limit} />
                   </div>
 
