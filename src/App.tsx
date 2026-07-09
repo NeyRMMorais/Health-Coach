@@ -29,12 +29,14 @@ import {
   Settings,
   RefreshCw,
   Heart,
-  Copy
+  Copy,
+  MessageSquare
 } from 'lucide-react';
 
 import { auth, db, handleFirestoreError, OperationType } from './firebase';
 import { UserProfile, FoodLog } from './types';
 import ProfileModal from './components/ProfileModal';
+import FeedbackModal from './components/FeedbackModal';
 import MetricCircle from './components/MetricCircle';
 import FoodLogSection from './components/FoodLogSection';
 import MealGenerator from './components/MealGenerator';
@@ -71,6 +73,26 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
+  };
+
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState<boolean>(false);
+
+  const handleAddFeedback = async (feedbackData: { type: 'bug' | 'improvement'; text: string }) => {
+    if (!user) return;
+    const feedbackId = doc(collection(db, 'feedback')).id;
+    const path = `feedback/${feedbackId}`;
+    try {
+      const newFeedback = {
+        id: feedbackId,
+        userId: user.uid,
+        ...feedbackData,
+        createdAt: serverTimestamp(),
+      };
+      await setDoc(doc(db, 'feedback', feedbackId), newFeedback);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, path);
+      throw err;
+    }
   };
 
   // Monitor Auth State
@@ -402,6 +424,17 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
             {/* Right side user menu */}
             <div className="flex items-center gap-3">
               <button
+                onClick={() => setIsFeedbackOpen(true)}
+                className="p-2 text-slate-500 hover:text-emerald-600 hover:bg-slate-50 rounded-xl transition flex items-center gap-1"
+                title="Report Bug / Suggest Improvement"
+              >
+                <MessageSquare className="h-4 w-4" />
+                <span className="hidden sm:inline text-xs font-semibold">Feedback</span>
+              </button>
+
+              <div className="h-6 w-[1px] bg-slate-100" />
+
+              <button
                 onClick={() => setIsProfileOpen(true)}
                 className="p-2 text-slate-500 hover:text-emerald-600 hover:bg-slate-50 rounded-xl transition flex items-center gap-1"
                 title="Profile & Goals Settings"
@@ -640,6 +673,13 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
         onClose={() => setIsProfileOpen(false)}
         profile={profile}
         onSave={handleSaveProfile}
+      />
+
+      {/* Feedback Modal */}
+      <FeedbackModal
+        isOpen={isFeedbackOpen}
+        onClose={() => setIsFeedbackOpen(false)}
+        onSubmit={handleAddFeedback}
       />
 
       {/* Humble branding footer */}

@@ -91,6 +91,19 @@ service cloud.firestore {
              data.updatedAt is timestamp;
     }
 
+    // Feedback Helper
+    function isValidFeedback(data) {
+      return data.id is string &&
+             data.id.size() <= 128 &&
+             data.userId == request.auth.uid &&
+             data.type is string &&
+             (data.type == 'bug' || data.type == 'improvement') &&
+             data.text is string &&
+             data.text.size() > 0 &&
+             data.text.size() <= 2000 &&
+             data.createdAt is timestamp;
+    }
+
     match /users/{userId} {
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
@@ -144,6 +157,18 @@ service cloud.firestore {
 
         allow delete: if isSignedIn() && request.auth.uid == userId;
       }
+    }
+
+    match /feedback/{feedbackId} {
+      allow create: if isSignedIn() &&
+                       isValidId(feedbackId) &&
+                       incoming().id == feedbackId &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['id', 'userId', 'type', 'text', 'createdAt']) &&
+                       incoming().keys().size() == 5 &&
+                       incoming().createdAt == request.time &&
+                       isValidFeedback(incoming());
+      allow read, update, delete: if false;
     }
   }
 }
