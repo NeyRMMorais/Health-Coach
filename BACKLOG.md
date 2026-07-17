@@ -36,8 +36,16 @@ This backlog tracks upcoming feature requests, architectural improvements, and b
 
 ---
 
+### 5. ✏️ Edit Logged Meal Categories
+*   **Goal**: Allow users to reclassify the meal category (e.g., from Breakfast to Lunch) of an already registered food item.
+*   **User Story**: *"I want to be able to edit the meal category of an item I already logged, in case I made a mistake, instead of having to delete and re-enter it."*
+
+### 6. ⏱️ Specific Meal Timestamps
+*   **Goal**: Track the exact time a meal was consumed, rather than just the calendar date.
+*   **User Story**: *"I want to add a specific time for my meals. It should auto-fill with the current time of registration, but allow me to manually overwrite it."*
+
 ## 💡 Future Enhancements (Low Priority)
 
-### 5. 📷 Gemini Multimodal Food Logging
+### 7. 📷 Gemini Multimodal Food Logging
 *   **Goal**: Log meals simply by taking/uploading a photo.
 *   **User Story**: *"I want to upload a photo of my plate, and have Gemini automatically estimate the meal name, calories, and macro breakdown for quick logging."*

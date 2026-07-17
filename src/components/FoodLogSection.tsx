@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Calendar, Trash2, Plus, Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
+import { Calendar, Trash2, Plus, Sparkles, AlertCircle, RefreshCw, Edit2, Check, X } from 'lucide-react';
 import { FoodLog, UserProfile } from '../types';
 
 interface FoodLogSectionProps {
@@ -8,9 +8,10 @@ interface FoodLogSectionProps {
   profile: UserProfile | null;
   onAddLog: (log: Omit<FoodLog, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   onDeleteLog: (id: string) => Promise<void>;
+  onUpdateLog: (id: string, updatedFields: Partial<FoodLog>) => Promise<void>;
 }
 
-export default function FoodLogSection({ logs, profile, onAddLog, onDeleteLog }: FoodLogSectionProps) {
+export default function FoodLogSection({ logs, profile, onAddLog, onDeleteLog, onUpdateLog }: FoodLogSectionProps) {
   // Input fields
   const [name, setName] = useState<string>('');
   const [mealType, setMealType] = useState<'Breakfast' | 'Lunch' | 'Dinner' | 'Snack'>('Breakfast');
@@ -19,10 +20,39 @@ export default function FoodLogSection({ logs, profile, onAddLog, onDeleteLog }:
   const [carbs, setCarbs] = useState<string>('');
   const [fats, setFats] = useState<string>('');
 
+  // Editing state
+  const [editingLogId, setEditingLogId] = useState<string | null>(null);
+  const [tempMealType, setTempMealType] = useState<'Breakfast' | 'Lunch' | 'Dinner' | 'Snack' | null>(null);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+
   // AI assistant input
   const [aiInput, setAiInput] = useState<string>('');
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [aiError, setAiError] = useState<string | null>(null);
+
+  const handleStartEdit = (log: FoodLog) => {
+    setEditingLogId(log.id);
+    setTempMealType(log.mealType);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingLogId(null);
+    setTempMealType(null);
+  };
+
+  const handleSaveEdit = async (logId: string) => {
+    if (!tempMealType) return;
+    setIsSaving(true);
+    try {
+      await onUpdateLog(logId, { mealType: tempMealType });
+      setEditingLogId(null);
+      setTempMealType(null);
+    } catch (err) {
+      console.error('Error updating meal type:', err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // Filters
   const todayStr = new Date().toISOString().split('T')[0];
@@ -245,17 +275,57 @@ export default function FoodLogSection({ logs, profile, onAddLog, onDeleteLog }:
                               <span>F: <strong className="text-amber-500/80">{log.fats}g</strong></span>
                             </div>
                           </div>
-                          <div className="flex items-center gap-4 shrink-0">
+                          <div className="flex items-center gap-3 shrink-0">
                             <span className="text-sm font-extrabold text-slate-700">
                               {log.calories} <span className="text-[10px] text-slate-400 font-normal">kcal</span>
                             </span>
-                            <button
-                              onClick={() => onDeleteLog(log.id)}
-                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                              title="Delete entry"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                            {editingLogId === log.id ? (
+                              <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-100">
+                                <select
+                                  value={tempMealType || log.mealType}
+                                  onChange={e => setTempMealType(e.target.value as any)}
+                                  className="bg-white border border-slate-200 text-slate-700 font-bold px-2 py-1 rounded-lg text-[11px] focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                                >
+                                  <option value="Breakfast">Breakfast</option>
+                                  <option value="Lunch">Lunch</option>
+                                  <option value="Dinner">Dinner</option>
+                                  <option value="Snack">Snack</option>
+                                </select>
+                                <button
+                                  onClick={() => handleSaveEdit(log.id)}
+                                  disabled={isSaving}
+                                  className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-lg transition disabled:opacity-50"
+                                  title="Save category"
+                                >
+                                  <Check className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  onClick={handleCancelEdit}
+                                  disabled={isSaving}
+                                  className="p-1 text-slate-400 hover:bg-slate-100 rounded-lg transition disabled:opacity-50"
+                                  title="Cancel"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => handleStartEdit(log)}
+                                  className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
+                                  title="Reclassify meal category"
+                                >
+                                  <Edit2 className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => onDeleteLog(log.id)}
+                                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                                  title="Delete entry"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       ))}

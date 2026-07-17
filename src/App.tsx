@@ -262,6 +262,20 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
     }
   };
 
+  const handleUpdateLog = async (logId: string, updatedFields: Partial<FoodLog>) => {
+    if (!user) return;
+    const path = `users/${user.uid}/foodLogs/${logId}`;
+    try {
+      const updatedLog = {
+        ...updatedFields,
+        updatedAt: serverTimestamp(),
+      };
+      await setDoc(doc(db, `users/${user.uid}/foodLogs`, logId), updatedLog, { merge: true });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, path);
+    }
+  };
+
   // Helper to log suggested meals from the generator
   const handleLogSuggestedMeal = async (meal: {
     name: string;
@@ -630,6 +644,7 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
                   profile={profile}
                   onAddLog={handleAddLog}
                   onDeleteLog={handleDeleteLog}
+                  onUpdateLog={handleUpdateLog}
                 />
               </motion.div>
             )}
