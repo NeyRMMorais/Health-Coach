@@ -28,6 +28,7 @@ export default function FoodLogSection({ logs, profile, onAddLog, onDeleteLog, o
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
   const [tempMealType, setTempMealType] = useState<'Breakfast' | 'Lunch' | 'Dinner' | 'Snack' | null>(null);
   const [tempTime, setTempTime] = useState<string | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
   // AI assistant input
@@ -38,25 +39,41 @@ export default function FoodLogSection({ logs, profile, onAddLog, onDeleteLog, o
   const handleStartEdit = (log: FoodLog) => {
     setEditingLogId(log.id);
     setTempMealType(log.mealType);
-    setTempTime(log.time);
+    setTempTime(log.time || '12:00');
+    setEditError(null);
   };
 
   const handleCancelEdit = () => {
     setEditingLogId(null);
     setTempMealType(null);
     setTempTime(null);
+    setEditError(null);
   };
 
   const handleSaveEdit = async (logId: string) => {
-    if (!tempMealType || !tempTime) return;
+    const finalMealType = tempMealType;
+    const finalTime = tempTime ? tempTime.slice(0, 5) : '12:00';
+    if (!finalMealType || !finalTime) return;
+
     setIsSaving(true);
+    setEditError(null);
     try {
-      await onUpdateLog(logId, { mealType: tempMealType, time: tempTime });
+      await onUpdateLog(logId, { mealType: finalMealType, time: finalTime });
       setEditingLogId(null);
       setTempMealType(null);
       setTempTime(null);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error updating meal type/time:', err);
+      let errMsg = 'Failed to update food log.';
+      try {
+        const parsed = JSON.parse(err.message);
+        if (parsed && parsed.error) {
+          errMsg = parsed.error;
+        }
+      } catch {
+        if (err?.message) errMsg = err.message;
+      }
+      setEditError(errMsg);
     } finally {
       setIsSaving(false);
     }
@@ -295,6 +312,12 @@ export default function FoodLogSection({ logs, profile, onAddLog, onDeleteLog, o
                                 <span>•</span>
                                 <span>F: <strong className="text-amber-500/80">{log.fats}g</strong></span>
                               </div>
+
+                              {editError && (
+                                <div className="text-[10px] text-rose-600 bg-rose-50 px-2 py-1.5 rounded border border-rose-100 font-medium">
+                                  {editError}
+                                </div>
+                              )}
 
                               {/* Line 3: Edit inputs (Time, Category) & Action Buttons */}
                               <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
