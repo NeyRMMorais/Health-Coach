@@ -27,6 +27,7 @@ export default function FoodLogSection({ logs, profile, onAddLog, onDeleteLog, o
   // Editing state
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
   const [tempMealType, setTempMealType] = useState<'Breakfast' | 'Lunch' | 'Dinner' | 'Snack' | null>(null);
+  const [tempTime, setTempTime] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
   // AI assistant input
@@ -37,22 +38,25 @@ export default function FoodLogSection({ logs, profile, onAddLog, onDeleteLog, o
   const handleStartEdit = (log: FoodLog) => {
     setEditingLogId(log.id);
     setTempMealType(log.mealType);
+    setTempTime(log.time);
   };
 
   const handleCancelEdit = () => {
     setEditingLogId(null);
     setTempMealType(null);
+    setTempTime(null);
   };
 
   const handleSaveEdit = async (logId: string) => {
-    if (!tempMealType) return;
+    if (!tempMealType || !tempTime) return;
     setIsSaving(true);
     try {
-      await onUpdateLog(logId, { mealType: tempMealType });
+      await onUpdateLog(logId, { mealType: tempMealType, time: tempTime });
       setEditingLogId(null);
       setTempMealType(null);
+      setTempTime(null);
     } catch (err) {
-      console.error('Error updating meal type:', err);
+      console.error('Error updating meal type/time:', err);
     } finally {
       setIsSaving(false);
     }
@@ -267,64 +271,108 @@ export default function FoodLogSection({ logs, profile, onAddLog, onDeleteLog, o
 
                     {/* Meal Entries */}
                     <div className="space-y-2">
-                      {mealList.map(log => (
-                        <div
-                          key={log.id}
-                          className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-100 hover:border-slate-200 transition"
-                        >
-                          <div className="flex-1 min-w-0 pr-3">
-                            <div className="flex items-center gap-2">
-                              <h4 className="font-bold text-slate-700 text-sm truncate">{log.name}</h4>
-                              <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold shrink-0">
-                                {log.time}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-slate-400 mt-1">
-                              <span>P: <strong className="text-rose-500/80">{log.protein}g</strong></span>
-                              <span>•</span>
-                              <span>C: <strong className="text-indigo-500/80">{log.carbs}g</strong></span>
-                              <span>•</span>
-                              <span>F: <strong className="text-amber-500/80">{log.fats}g</strong></span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3 shrink-0">
-                            <span className="text-sm font-extrabold text-slate-700">
-                              {log.calories} <span className="text-[10px] text-slate-400 font-normal">kcal</span>
-                            </span>
-                            {editingLogId === log.id ? (
-                              <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-100">
-                                <select
-                                  value={tempMealType || log.mealType}
-                                  onChange={e => setTempMealType(e.target.value as any)}
-                                  className="bg-white border border-slate-200 text-slate-700 font-bold px-2 py-1 rounded-lg text-[11px] focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
-                                >
-                                  <option value="Breakfast">Breakfast</option>
-                                  <option value="Lunch">Lunch</option>
-                                  <option value="Dinner">Dinner</option>
-                                  <option value="Snack">Snack</option>
-                                </select>
-                                <button
-                                  onClick={() => handleSaveEdit(log.id)}
-                                  disabled={isSaving}
-                                  className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-lg transition disabled:opacity-50"
-                                  title="Save category"
-                                >
-                                  <Check className="h-3.5 w-3.5" />
-                                </button>
-                                <button
-                                  onClick={handleCancelEdit}
-                                  disabled={isSaving}
-                                  className="p-1 text-slate-400 hover:bg-slate-100 rounded-lg transition disabled:opacity-50"
-                                  title="Cancel"
-                                >
-                                  <X className="h-3.5 w-3.5" />
-                                </button>
+                      {mealList.map(log => {
+                        const isEditing = editingLogId === log.id;
+
+                        if (isEditing) {
+                          return (
+                            <div
+                              key={log.id}
+                              className="flex flex-col bg-white p-3 rounded-lg border border-slate-200 shadow-sm space-y-2 animate-fadeIn"
+                            >
+                              {/* Line 1: Description & Calories */}
+                              <div className="flex items-center justify-between">
+                                <h4 className="font-bold text-slate-700 text-sm truncate">{log.name}</h4>
+                                <span className="text-sm font-extrabold text-slate-700">
+                                  {log.calories} <span className="text-[10px] text-slate-400 font-normal">kcal</span>
+                                </span>
                               </div>
-                            ) : (
+
+                              {/* Line 2: Macros */}
+                              <div className="flex items-center gap-2 text-xs text-slate-400">
+                                <span>P: <strong className="text-rose-500/80">{log.protein}g</strong></span>
+                                <span>•</span>
+                                <span>C: <strong className="text-indigo-500/80">{log.carbs}g</strong></span>
+                                <span>•</span>
+                                <span>F: <strong className="text-amber-500/80">{log.fats}g</strong></span>
+                              </div>
+
+                              {/* Line 3: Edit inputs (Time, Category) & Action Buttons */}
+                              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+                                <div className="flex items-center gap-1.5 flex-1 min-w-[200px]">
+                                  {/* Time Picker */}
+                                  <input
+                                    type="time"
+                                    value={tempTime || log.time}
+                                    onChange={e => setTempTime(e.target.value)}
+                                    className="bg-white border border-slate-200 text-slate-700 font-bold px-2 py-1 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 transition w-24"
+                                  />
+                                  {/* Category Dropdown */}
+                                  <select
+                                    value={tempMealType || log.mealType}
+                                    onChange={e => setTempMealType(e.target.value as any)}
+                                    className="bg-white border border-slate-200 text-slate-700 font-bold px-2 py-1 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 transition flex-1"
+                                  >
+                                    <option value="Breakfast">Breakfast</option>
+                                    <option value="Lunch">Lunch</option>
+                                    <option value="Dinner">Dinner</option>
+                                    <option value="Snack">Snack</option>
+                                  </select>
+                                </div>
+
+                                {/* Save / Cancel buttons */}
+                                <div className="flex items-center gap-1 ml-auto">
+                                  <button
+                                    onClick={() => handleSaveEdit(log.id)}
+                                    disabled={isSaving}
+                                    className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition disabled:opacity-50"
+                                    title="Confirm changes"
+                                  >
+                                    <Check className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={handleCancelEdit}
+                                    disabled={isSaving}
+                                    className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg transition disabled:opacity-50"
+                                    title="Cancel"
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // Normal state
+                        return (
+                          <div
+                            key={log.id}
+                            className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-100 hover:border-slate-200 transition"
+                          >
+                            <div className="flex-1 min-w-0 pr-3">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-bold text-slate-700 text-sm truncate">{log.name}</h4>
+                                <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold shrink-0">
+                                  {log.time}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-slate-400 mt-1">
+                                <span>P: <strong className="text-rose-500/80">{log.protein}g</strong></span>
+                                <span>•</span>
+                                <span>C: <strong className="text-indigo-500/80">{log.carbs}g</strong></span>
+                                <span>•</span>
+                                <span>F: <strong className="text-amber-500/80">{log.fats}g</strong></span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0">
+                              <span className="text-sm font-extrabold text-slate-700">
+                                {log.calories} <span className="text-[10px] text-slate-400 font-normal">kcal</span>
+                              </span>
                               <div className="flex items-center gap-1">
                                 <button
                                   onClick={() => handleStartEdit(log)}
-                                  className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
+                                  className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-slate-50 rounded-lg transition"
                                   title="Reclassify meal category"
                                 >
                                   <Edit2 className="h-3.5 w-3.5" />
@@ -337,10 +385,10 @@ export default function FoodLogSection({ logs, profile, onAddLog, onDeleteLog, o
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </button>
                               </div>
-                            )}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 );
