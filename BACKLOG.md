@@ -36,14 +36,9 @@ This backlog tracks upcoming feature requests, architectural improvements, and b
 
 ---
 
-### 5. ⏱️ Specific Meal Timestamps
-*   **Goal**: Track the exact time a meal was consumed, rather than just the calendar date.
-*   **User Story**: *"I want to add a specific time for my meals. It should auto-fill with the current time of registration, but allow me to manually overwrite it."*
-
----
-
 ## ✅ Completed
 
+*   **⏱️ Specific Meal Timestamps**: Track the exact time a meal was consumed, with auto-fill to current time, manual picker, and mobile-optimized inline edit layout.
 *   **✏️ Edit Logged Meal Categories**: Added the ability to reclassify a logged food item's category (Breakfast, Lunch, Dinner, Snack) directly from the dashboard.
 
 ## 💡 Future Enhancements (Low Priority)
