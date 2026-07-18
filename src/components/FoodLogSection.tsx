@@ -280,16 +280,15 @@ export default function FoodLogSection({ logs, profile, onAddLog, onDeleteLog, o
                               key={log.id}
                               className="flex flex-col bg-white p-3 rounded-lg border border-slate-200 shadow-sm space-y-2 animate-fadeIn"
                             >
-                              {/* Line 1: Description & Calories */}
+                              {/* Line 1: Description */}
                               <div className="flex items-center justify-between">
                                 <h4 className="font-bold text-slate-700 text-sm truncate">{log.name}</h4>
-                                <span className="text-sm font-extrabold text-slate-700">
-                                  {log.calories} <span className="text-[10px] text-slate-400 font-normal">kcal</span>
-                                </span>
                               </div>
 
-                              {/* Line 2: Macros */}
+                              {/* Line 2: Calories & Macros */}
                               <div className="flex items-center gap-2 text-xs text-slate-400">
+                                <span><strong className="text-slate-600">{log.calories} kcal</strong></span>
+                                <span>•</span>
                                 <span>P: <strong className="text-rose-500/80">{log.protein}g</strong></span>
                                 <span>•</span>
                                 <span>C: <strong className="text-indigo-500/80">{log.carbs}g</strong></span>
