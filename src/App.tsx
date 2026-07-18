@@ -147,6 +147,7 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
             carbs: data.carbs,
             fats: data.fats,
             date: data.date,
+            time: data.time || '12:00',
             createdAt: data.createdAt,
             updatedAt: data.updatedAt,
           } as FoodLog);
@@ -286,9 +287,12 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
     fats: number;
   }) => {
     const todayStr = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     await handleAddLog({
       ...meal,
       date: todayStr,
+      time: timeStr,
     });
   };
 

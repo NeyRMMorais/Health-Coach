@@ -21,6 +21,7 @@ export interface FoodLog {
   carbs: number;
   fats: number;
   date: string; // YYYY-MM-DD
+  time: string; // HH:MM
   createdAt: any;
   updatedAt: any;
 }

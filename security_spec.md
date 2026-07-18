@@ -10,6 +10,7 @@ This specification defines the security rules, invariants, and threat models for
   - Macronutrients (`proteinTarget`, `carbsTarget`, `fatsTarget`) must be positive integers strictly between 0 and 1000.
   - Food logs must have a non-empty name (under 128 characters), non-negative calories, and non-negative macronutrients (protein, carbs, fats).
   - Food logs `mealType` must be one of: `Breakfast`, `Lunch`, `Dinner`, `Snack`.
+  - Food logs must contain a `time` string formatted as `HH:MM` (exactly 5 characters, matching `^[0-9]{2}:[0-9]{2}$`).
 - **Temporal Integrity**: All timestamp fields (`createdAt`, `updatedAt`) must match `request.time`. They must be immutable after creation.
 - **No Shadow Fields (Ghost Fields)**: During document creation, exact map keys must be matched. Extra properties are forbidden.
 - **Secure Queries**: Client queries must verify `resource.data` or document paths directly.
@@ -157,6 +158,7 @@ describe('Firestore Security Rules', () => {
       carbs: 50,
       fats: 5,
       date: '2026-06-29',
+      time: '08:30',
       createdAt: new Date(),
       updatedAt: new Date()
     }));
@@ -176,6 +178,7 @@ describe('Firestore Security Rules', () => {
       carbs: 50,
       fats: 5,
       date: '2026-06-29',
+      time: '08:30',
       createdAt: new Date(),
       updatedAt: new Date()
     }));
@@ -195,6 +198,7 @@ describe('Firestore Security Rules', () => {
       carbs: 50,
       fats: 5,
       date: '2026-06-29',
+      time: '08:30',
       createdAt: new Date(),
       updatedAt: new Date()
     }));
@@ -214,6 +218,7 @@ describe('Firestore Security Rules', () => {
       carbs: 50,
       fats: 5,
       date: '2026-06-29',
+      time: '08:30',
       createdAt: new Date(),
       updatedAt: new Date()
     }));

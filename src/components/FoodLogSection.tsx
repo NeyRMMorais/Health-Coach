@@ -19,6 +19,10 @@ export default function FoodLogSection({ logs, profile, onAddLog, onDeleteLog, o
   const [protein, setProtein] = useState<string>('');
   const [carbs, setCarbs] = useState<string>('');
   const [fats, setFats] = useState<string>('');
+  const [time, setTime] = useState<string>(() => {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  });
 
   // Editing state
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
@@ -147,7 +151,8 @@ export default function FoodLogSection({ logs, profile, onAddLog, onDeleteLog, o
         protein: pVal,
         carbs: cVal,
         fats: fVal,
-        date: selectedDate
+        date: selectedDate,
+        time
       });
 
       // Clear form
@@ -157,6 +162,8 @@ export default function FoodLogSection({ logs, profile, onAddLog, onDeleteLog, o
       setCarbs('');
       setFats('');
       setAiInput('');
+      const now = new Date();
+      setTime(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`);
     } catch (err: any) {
       console.error('Error logging food:', err);
       let errMsg = 'Failed to save food log to Firestore database.';
@@ -266,7 +273,12 @@ export default function FoodLogSection({ logs, profile, onAddLog, onDeleteLog, o
                           className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-100 hover:border-slate-200 transition"
                         >
                           <div className="flex-1 min-w-0 pr-3">
-                            <h4 className="font-bold text-slate-700 text-sm truncate">{log.name}</h4>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-bold text-slate-700 text-sm truncate">{log.name}</h4>
+                              <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold shrink-0">
+                                {log.time}
+                              </span>
+                            </div>
                             <div className="flex items-center gap-2 text-xs text-slate-400 mt-1">
                               <span>P: <strong className="text-rose-500/80">{log.protein}g</strong></span>
                               <span>•</span>
@@ -429,13 +441,13 @@ export default function FoodLogSection({ logs, profile, onAddLog, onDeleteLog, o
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1">MEAL CATEGORY</label>
                 <select
                   value={mealType}
                   onChange={e => setMealType(e.target.value as any)}
-                  className="w-full bg-white px-3 py-2 border border-slate-200 rounded-lg text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                  className="w-full bg-white px-3 py-2 border border-slate-200 rounded-lg text-slate-800 text-[11px] focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
                 >
                   <option value="Breakfast">Breakfast</option>
                   <option value="Lunch">Lunch</option>
@@ -444,13 +456,22 @@ export default function FoodLogSection({ logs, profile, onAddLog, onDeleteLog, o
                 </select>
               </div>
               <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">TIME</label>
+                <input
+                  type="time"
+                  value={time}
+                  onChange={e => setTime(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-800 text-[11px] focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                />
+              </div>
+              <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1">ENERGY (KCAL)</label>
                 <input
                   type="number"
                   value={calories}
                   onChange={e => setCalories(e.target.value)}
                   placeholder="350"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-800 text-[11px] focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
                 />
               </div>
             </div>
