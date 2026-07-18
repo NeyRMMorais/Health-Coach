@@ -1,5 +1,12 @@
 {
-  "firestore": {
-    "rules": "firestore.rules"
-  }
+  "firestore": [
+    {
+      "database": "(default)",
+      "rules": "firestore.rules"
+    },
+    {
+      "database": "ai-studio-healthcoach-0aa518aa-95ce-4565-a3f3-e7f119ebce4d",
+      "rules": "firestore.rules"
+    }
+  ]
 }

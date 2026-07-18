@@ -314,21 +314,8 @@ export default function FoodLogSection({ logs, profile, onAddLog, onDeleteLog, o
                               </div>
 
                               {editError && (
-                                <div className="text-[10px] text-rose-600 bg-rose-50 p-2.5 rounded-lg border border-rose-100 font-medium space-y-1">
-                                  <div><strong>Error:</strong> {editError}</div>
-                                  <div className="font-mono text-[9px] bg-white p-1.5 border border-rose-100/60 rounded overflow-x-auto leading-normal">
-                                    <strong>Payload:</strong> {JSON.stringify({ mealType: tempMealType, time: tempTime })}
-                                  </div>
-                                  <div className="font-mono text-[9px] bg-white p-1.5 border border-rose-100/60 rounded overflow-x-auto leading-normal">
-                                    <strong>Log ID:</strong> {log.id}
-                                  </div>
-                                  <div className="font-mono text-[9px] bg-white p-1.5 border border-rose-100/60 rounded overflow-x-auto leading-normal">
-                                    <strong>Fields:</strong> {JSON.stringify(Object.keys(log).reduce((acc, k) => {
-                                      const val = (log as any)[k];
-                                      (acc as any)[k] = { value: val, type: typeof val };
-                                      return acc;
-                                    }, {}))}
-                                  </div>
+                                <div className="text-[10px] text-rose-600 bg-rose-50 px-2 py-1.5 rounded border border-rose-100 font-medium">
+                                  {editError}
                                 </div>
                               )}
 
