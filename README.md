@@ -6,7 +6,7 @@
 
 An intelligent, AI-powered health and nutrition coach application built with React, Vite, Express, and Google Gemini AI.
 
-View your app in AI Studio: https://ai.studio/apps/0aa518aa-95ce-4565-a3f3-e7f119ebce4d
+**Live Production URL**: [https://health-coach-294927768151.europe-west2.run.app](https://health-coach-294927768151.europe-west2.run.app)
 
 ---
 
@@ -54,9 +54,23 @@ View your app in AI Studio: https://ai.studio/apps/0aa518aa-95ce-4565-a3f3-e7f11
 
 ---
 
+## ☁️ Deploy to GCP Cloud Run Production
+
+To deploy updates directly to GCP Cloud Run (`europe-west2`):
+
+```bash
+gcloud run deploy health-coach \
+  --source . \
+  --region europe-west2 \
+  --project health-coach-501615
+```
+
+---
+
 ## 🛠️ Tech Stack
 
 - **Frontend**: React 19, Vite 6, TailwindCSS, Motion (Framer Motion), Lucide Icons
 - **Backend**: Express, Node.js, `tsx`, `esbuild`
+- **Hosting**: GCP Cloud Run (Docker / Source build)
 - **AI Integration**: Google Gen AI SDK (`@google/genai`)
 - **Database & Auth**: Firebase Auth, Firebase Firestore
