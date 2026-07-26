@@ -107,6 +107,32 @@ service cloud.firestore {
              data.createdAt is timestamp;
     }
 
+    // SavedMeal Helper
+    function isValidSavedMeal(data) {
+      return data.id is string &&
+             data.id.size() <= 128 &&
+             data.userId == request.auth.uid &&
+             data.name is string &&
+             data.name.size() > 0 &&
+             data.name.size() <= 128 &&
+             data.mealType is string &&
+             (data.mealType == 'Breakfast' || data.mealType == 'Lunch' || data.mealType == 'Dinner' || data.mealType == 'Snack') &&
+             (data.calories is int || data.calories is float) &&
+             data.calories >= 0 &&
+             data.calories <= 5000 &&
+             (data.protein is int || data.protein is float) &&
+             data.protein >= 0 &&
+             data.protein <= 500 &&
+             (data.carbs is int || data.carbs is float) &&
+             data.carbs >= 0 &&
+             data.carbs <= 500 &&
+             (data.fats is int || data.fats is float) &&
+             data.fats >= 0 &&
+             data.fats <= 500 &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
     match /users/{userId} {
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
@@ -157,6 +183,36 @@ service cloud.firestore {
                           incoming().userId == existing().userId &&
                           isValidFoodLog(incoming()) &&
                           incoming().diff(existing()).affectedKeys().hasOnly(['name', 'mealType', 'calories', 'protein', 'carbs', 'fats', 'date', 'time', 'updatedAt']);
+
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
+
+      match /savedMeals/{mealId} {
+        allow get: if isSignedIn() && request.auth.uid == userId;
+        allow list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isEmailVerified() &&
+                          isValidId(userId) &&
+                          isValidId(mealId) &&
+                          isOwner(userId) &&
+                          incoming().id == mealId &&
+                          incoming().userId == request.auth.uid &&
+                          incoming().keys().hasAll(['id', 'userId', 'name', 'mealType', 'calories', 'protein', 'carbs', 'fats', 'createdAt', 'updatedAt']) &&
+                          incoming().keys().size() == 10 &&
+                          incoming().createdAt == request.time &&
+                          incoming().updatedAt == request.time &&
+                          isValidSavedMeal(incoming());
+
+        allow update: if isEmailVerified() &&
+                          isValidId(userId) &&
+                          isValidId(mealId) &&
+                          isOwner(userId) &&
+                          incoming().updatedAt == request.time &&
+                          incoming().createdAt == existing().createdAt &&
+                          incoming().id == existing().id &&
+                          incoming().userId == existing().userId &&
+                          isValidSavedMeal(incoming()) &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'mealType', 'calories', 'protein', 'carbs', 'fats', 'updatedAt']);
 
         allow delete: if isSignedIn() && request.auth.uid == userId;
       }

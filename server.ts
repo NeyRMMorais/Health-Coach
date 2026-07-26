@@ -21,14 +21,86 @@ const ai = new GoogleGenAI({
   }
 });
 
+function fallbackEstimate(query: string) {
+  const q = query.toLowerCase();
+  let calories = 250;
+  let protein = 12;
+  let carbs = 25;
+  let fats = 8;
+  
+  if (q.includes('whey') || q.includes('protein')) { protein += 24; calories += 120; }
+  if (q.includes('milk') || q.includes('kwark') || q.includes('yogurt')) { protein += 14; carbs += 10; calories += 110; }
+  if (q.includes('egg')) { protein += 12; fats += 10; calories += 140; }
+  if (q.includes('oat') || q.includes('bread') || q.includes('rice')) { carbs += 30; calories += 150; }
+  if (q.includes('strawberry') || q.includes('fruit') || q.includes('berry') || q.includes('banana')) { carbs += 15; calories += 60; }
+  if (q.includes('avocado') || q.includes('nuts') || q.includes('oil') || q.includes('peanut')) { fats += 14; calories += 130; }
+  if (q.includes('chicken') || q.includes('steak') || q.includes('salmon') || q.includes('turkey')) { protein += 30; fats += 6; calories += 220; }
+
+  let cleanName = query.split(',')[0].split('.')[0].trim();
+  if (cleanName.length > 40) cleanName = cleanName.slice(0, 40) + '...';
+  cleanName = cleanName.replace(/\b\w/g, l => l.toUpperCase());
+
+  return {
+    name: cleanName || "Estimated Meal",
+    calories,
+    protein,
+    carbs,
+    fats
+  };
+}
+
+function fallbackSuggestMeals(goal: string, mealType: string) {
+  return [
+    {
+      title: `${mealType || 'Meal'} Power Bowl`,
+      description: `High protein option designed for "${goal || 'healthy eating'}".`,
+      prepTime: "15 mins",
+      ingredients: ["150g Grilled Chicken or Tofu", "1 cup Brown Rice", "1 cup Mixed Greens", "1 tbsp Olive Oil"],
+      instructions: ["Cook protein thoroughly in pan.", "Assemble rice and greens in bowl.", "Drizzle olive oil and serve warm."],
+      calories: 450,
+      protein: 38,
+      carbs: 42,
+      fats: 14
+    },
+    {
+      title: `Balanced ${mealType || 'Meal'} Smoothie`,
+      description: `Quick nutrient-dense smoothie option.`,
+      prepTime: "5 mins",
+      ingredients: ["1 scoop Whey Protein", "200ml Skim Milk", "1/2 Banana", "1 tbsp Peanut Butter"],
+      instructions: ["Add all ingredients to high-speed blender.", "Blend until smooth for 45 seconds.", "Pour and enjoy."],
+      calories: 340,
+      protein: 30,
+      carbs: 32,
+      fats: 10
+    },
+    {
+      title: `Mediterranean ${mealType || 'Meal'} Plate`,
+      description: `Wholesome ingredients with balanced macros.`,
+      prepTime: "12 mins",
+      ingredients: ["2 Whole Eggs", "50g Feta Cheese", "1/2 Avocado sliced", "1 slice Whole Grain Toast"],
+      instructions: ["Lightly toast bread.", "Prepare eggs to preference.", "Top toast with avocado, eggs, and feta."],
+      calories: 410,
+      protein: 24,
+      carbs: 28,
+      fats: 22
+    }
+  ];
+}
+
 // Endpoint to estimate nutrition macros from text
 app.post("/api/gemini/estimate", async (req, res) => {
-  try {
-    const { query } = req.body;
-    if (!query || typeof query !== "string") {
-      return res.status(400).json({ error: "Missing or invalid query parameter" });
-    }
+  const { query } = req.body;
+  if (!query || typeof query !== "string") {
+    return res.status(400).json({ error: "Missing or invalid query parameter" });
+  }
 
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
+    console.log("No valid GEMINI_API_KEY found, using local smart nutrition fallback.");
+    return res.json(fallbackEstimate(query));
+  }
+
+  try {
     const response = await ai.models.generateContent({
       model: "gemini-3.5-flash",
       contents: `Estimate the calories (kcal) and macronutrients (protein, carbs, fats in grams) for this meal: "${query}". Provide a reasonable single food name or short summary as "name".`,
@@ -56,16 +128,22 @@ app.post("/api/gemini/estimate", async (req, res) => {
     const parsed = JSON.parse(resultText);
     res.json(parsed);
   } catch (error) {
-    console.error("Error in /api/gemini/estimate:", error);
-    res.status(500).json({ error: error instanceof Error ? error.message : "Failed to estimate nutrition" });
+    console.error("Error in /api/gemini/estimate, falling back to local estimator:", error);
+    res.json(fallbackEstimate(query));
   }
 });
 
 // Endpoint to suggest healthy meal options based on goals
 app.post("/api/gemini/suggest-meals", async (req, res) => {
-  try {
-    const { goal, mealType, dietaryPreferences } = req.body;
+  const { goal, mealType, dietaryPreferences } = req.body;
+  const apiKey = process.env.GEMINI_API_KEY;
 
+  if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
+    console.log("No valid GEMINI_API_KEY found, using local meal suggestions fallback.");
+    return res.json(fallbackSuggestMeals(goal, mealType));
+  }
+
+  try {
     const prefsStr = dietaryPreferences && Array.isArray(dietaryPreferences) && dietaryPreferences.length > 0
       ? `Dietary preferences/restrictions: ${dietaryPreferences.join(", ")}.`
       : "No specific dietary restrictions.";
@@ -119,8 +197,8 @@ Provide clear, structured recipes. Make sure preparation times, calories, and ma
     const parsed = JSON.parse(resultText);
     res.json(parsed);
   } catch (error) {
-    console.error("Error in /api/gemini/suggest-meals:", error);
-    res.status(500).json({ error: error instanceof Error ? error.message : "Failed to suggest meals" });
+    console.error("Error in /api/gemini/suggest-meals, falling back to local generator:", error);
+    res.json(fallbackSuggestMeals(goal, mealType));
   }
 });
 

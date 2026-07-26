@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Clock, ListChecks, ChevronRight, Check, Flame, ChevronDown, ChevronUp } from 'lucide-react';
-import { MealSuggestion } from '../types';
+import { Sparkles, Clock, ListChecks, ChevronRight, Check, Flame, ChevronDown, ChevronUp, Bookmark } from 'lucide-react';
+import { MealSuggestion, SavedMeal } from '../types';
 
 interface MealGeneratorProps {
   userGoal: string;
   userDietaryPreferences: string[];
+  savedMeals?: SavedMeal[];
   onLogMeal: (meal: {
     name: string;
     mealType: 'Breakfast' | 'Lunch' | 'Dinner' | 'Snack';
@@ -14,6 +15,7 @@ interface MealGeneratorProps {
     carbs: number;
     fats: number;
   }) => Promise<void>;
+  onSaveToLibrary?: (meal: Omit<SavedMeal, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
 }
 
 const PRESET_GOALS = [
@@ -34,7 +36,13 @@ const LOADER_MESSAGES = [
   'Curating delicious prep guides for you...'
 ];
 
-export default function MealGenerator({ userGoal, userDietaryPreferences, onLogMeal }: MealGeneratorProps) {
+export default function MealGenerator({
+  userGoal,
+  userDietaryPreferences,
+  savedMeals = [],
+  onLogMeal,
+  onSaveToLibrary
+}: MealGeneratorProps) {
   const [goal, setGoal] = useState<string>(userGoal || 'Lose Weight / Calorie Deficit');
   const [mealType, setMealType] = useState<'Breakfast' | 'Lunch' | 'Dinner' | 'Snack'>('Lunch');
   const [dietaryPrefs, setDietaryPrefs] = useState<string[]>(userDietaryPreferences || []);
@@ -44,6 +52,30 @@ export default function MealGenerator({ userGoal, userDietaryPreferences, onLogM
   const [error, setError] = useState<string | null>(null);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [loggedIndices, setLoggedIndices] = useState<number[]>([]);
+  const [savedIndices, setSavedIndices] = useState<number[]>([]);
+
+  const handleSaveToLibrary = async (index: number, suggestion: MealSuggestion) => {
+    if (!onSaveToLibrary) return;
+    setSavedIndices(prev => [...prev, index]);
+    try {
+      const recipeNotes = [
+        suggestion.description,
+        suggestion.ingredients?.length ? `Ingredients: ${suggestion.ingredients.join(', ')}` : ''
+      ].filter(Boolean).join('\n');
+
+      await onSaveToLibrary({
+        name: suggestion.title,
+        mealType,
+        calories: suggestion.calories,
+        protein: suggestion.protein,
+        carbs: suggestion.carbs,
+        fats: suggestion.fats,
+        description: recipeNotes || undefined,
+      });
+    } catch (err) {
+      console.error('Failed to save to library:', err);
+    }
+  };
 
   // Keep goal and dietary preferences updated from profile changes
   useEffect(() => {
@@ -317,13 +349,28 @@ export default function MealGenerator({ userGoal, userDietaryPreferences, onLogM
                         </ol>
                       </div>
 
-                      {/* Log Action Button */}
-                      <div className="flex items-center justify-end border-t border-slate-100 pt-3">
+                      {/* Action Buttons */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
+                        {onSaveToLibrary && (
+                          <button
+                            type="button"
+                            onClick={() => handleSaveToLibrary(idx, s)}
+                            disabled={savedIndices.includes(idx)}
+                            className={`px-3.5 py-2 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition ${
+                              savedIndices.includes(idx)
+                                ? 'bg-amber-50 text-amber-700 cursor-default border border-amber-200/60'
+                                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                            }`}
+                          >
+                            <Bookmark className={`h-3.5 w-3.5 ${savedIndices.includes(idx) ? 'fill-amber-500 text-amber-600' : ''}`} />
+                            {savedIndices.includes(idx) ? 'Saved to Library' : 'Save to Library'}
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => handleLog(idx, s)}
                           disabled={isLogged}
-                          className={`px-4 py-2 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition ${
+                          className={`px-4 py-2 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition ml-auto ${
                             isLogged
                               ? 'bg-emerald-50 text-emerald-700 cursor-default'
                               : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm'

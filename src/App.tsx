@@ -30,13 +30,15 @@ import {
   RefreshCw,
   Heart,
   Copy,
-  MessageSquare
+  MessageSquare,
+  Bookmark
 } from 'lucide-react';
 
 import { auth, db, handleFirestoreError, OperationType } from './firebase';
-import { UserProfile, FoodLog } from './types';
+import { UserProfile, FoodLog, SavedMeal } from './types';
 import ProfileModal from './components/ProfileModal';
 import FeedbackModal from './components/FeedbackModal';
+import SavedMealsModal from './components/SavedMealsModal';
 import MetricCircle from './components/MetricCircle';
 import FoodLogSection from './components/FoodLogSection';
 import MealGenerator from './components/MealGenerator';
@@ -47,7 +49,9 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [foodLogs, setFoodLogs] = useState<FoodLog[]>([]);
+  const [savedMeals, setSavedMeals] = useState<SavedMeal[]>([]);
   const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
+  const [isSavedMealsOpen, setIsSavedMealsOpen] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'tracker' | 'suggest' | 'analytics'>('tracker');
   const [authError, setAuthError] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
@@ -101,14 +105,37 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
       setUser(firebaseUser);
       setAuthLoading(false);
       if (!firebaseUser) {
-        setProfile(null);
-        setFoodLogs([]);
+        try {
+          const guestSaved = localStorage.getItem('guest_saved_meals');
+          setSavedMeals(guestSaved ? JSON.parse(guestSaved) : []);
+
+          const guestLogs = localStorage.getItem('guest_food_logs');
+          setFoodLogs(guestLogs ? JSON.parse(guestLogs) : []);
+
+          const guestProf = localStorage.getItem('guest_profile');
+          if (guestProf) {
+            setProfile(JSON.parse(guestProf));
+          } else {
+            setProfile({
+              userId: 'guest',
+              dailyCaloricLimit: 2000,
+              proteinTarget: 130,
+              carbsTarget: 220,
+              fatsTarget: 65,
+              weight: 75.0,
+              targetWeight: 72.0,
+              dietaryPreferences: [],
+            });
+          }
+        } catch (e) {
+          console.error('Failed to load guest data from localStorage:', e);
+        }
       }
     });
     return () => unsubscribe();
   }, []);
 
-  // Monitor Profile and Food Logs when User is Authenticated
+  // Monitor Profile, Food Logs, and Saved Meals when User is Authenticated
   useEffect(() => {
     if (!user) return;
 
@@ -167,9 +194,46 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
       }
     );
 
+    // 3. Saved Meals Snap Listener
+    const savedMealsPath = `users/${user.uid}/savedMeals`;
+    const unsubSavedMeals = onSnapshot(
+      collection(db, savedMealsPath),
+      (snapshot) => {
+        const loadedMeals: SavedMeal[] = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          loadedMeals.push({
+            id: docSnap.id,
+            userId: data.userId,
+            name: data.name,
+            mealType: data.mealType,
+            calories: data.calories,
+            protein: data.protein,
+            carbs: data.carbs,
+            fats: data.fats,
+            createdAt: data.createdAt,
+            updatedAt: data.updatedAt,
+          } as SavedMeal);
+        });
+
+        // Client-side sort: newest first
+        loadedMeals.sort((a, b) => {
+          const tA = a.createdAt?.seconds || 0;
+          const tB = b.createdAt?.seconds || 0;
+          return tB - tA;
+        });
+
+        setSavedMeals(loadedMeals);
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.LIST, savedMealsPath);
+      }
+    );
+
     return () => {
       unsubProfile();
       unsubLogs();
+      unsubSavedMeals();
     };
   }, [user]);
 
@@ -221,7 +285,12 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
   };
 
   const handleSaveProfile = async (updatedFields: Partial<UserProfile>) => {
-    if (!user) return;
+    if (!user) {
+      const updated = { ...(profile || {}), ...updatedFields } as UserProfile;
+      setProfile(updated);
+      localStorage.setItem('guest_profile', JSON.stringify(updated));
+      return;
+    }
     const path = `users/${user.uid}`;
     try {
       const updatedProfile = {
@@ -236,7 +305,17 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
   };
 
   const handleAddLog = async (logData: Omit<FoodLog, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
-    if (!user) return;
+    if (!user) {
+      const newLog: FoodLog = {
+        id: 'guest_log_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+        userId: 'guest',
+        ...logData,
+      };
+      const updatedLogs = [newLog, ...foodLogs];
+      setFoodLogs(updatedLogs);
+      localStorage.setItem('guest_food_logs', JSON.stringify(updatedLogs));
+      return;
+    }
     const logId = doc(collection(db, `users/${user.uid}/foodLogs`)).id;
     const path = `users/${user.uid}/foodLogs/${logId}`;
     try {
@@ -254,7 +333,12 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
   };
 
   const handleDeleteLog = async (logId: string) => {
-    if (!user) return;
+    if (!user) {
+      const updatedLogs = foodLogs.filter((l) => l.id !== logId);
+      setFoodLogs(updatedLogs);
+      localStorage.setItem('guest_food_logs', JSON.stringify(updatedLogs));
+      return;
+    }
     const path = `users/${user.uid}/foodLogs/${logId}`;
     try {
       await deleteDoc(doc(db, `users/${user.uid}/foodLogs`, logId));
@@ -264,7 +348,12 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
   };
 
   const handleUpdateLog = async (logId: string, updatedFields: Partial<FoodLog>) => {
-    if (!user) return;
+    if (!user) {
+      const updatedLogs = foodLogs.map((l) => (l.id === logId ? { ...l, ...updatedFields } : l));
+      setFoodLogs(updatedLogs);
+      localStorage.setItem('guest_food_logs', JSON.stringify(updatedLogs));
+      return;
+    }
     const path = `users/${user.uid}/foodLogs/${logId}`;
     try {
       const updatedLog = {
@@ -291,6 +380,100 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     await handleAddLog({
       ...meal,
+      date: todayStr,
+      time: timeStr,
+    });
+  };
+
+  // Saved Meal CRUD handlers
+  const handleAddSavedMeal = async (mealData: Omit<SavedMeal, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
+    const mealId = user ? doc(collection(db, `users/${user.uid}/savedMeals`)).id : 'guest_meal_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    const newMeal: SavedMeal = {
+      id: mealId,
+      userId: user ? user.uid : 'guest',
+      ...mealData,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    setSavedMeals((prev) => {
+      const updated = [newMeal, ...prev.filter(m => m.id !== mealId)];
+      if (!user) {
+        localStorage.setItem('guest_saved_meals', JSON.stringify(updated));
+      }
+      return updated;
+    });
+
+    if (user) {
+      const path = `users/${user.uid}/savedMeals/${mealId}`;
+      try {
+        const firestoreMeal = {
+          id: mealId,
+          userId: user.uid,
+          ...mealData,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        };
+        await setDoc(doc(db, `users/${user.uid}/savedMeals`, mealId), firestoreMeal);
+      } catch (err) {
+        console.error('Firestore save meal error (retained locally):', err);
+      }
+    }
+  };
+
+  const handleDeleteSavedMeal = async (mealId: string) => {
+    setSavedMeals((prev) => {
+      const updated = prev.filter((m) => m.id !== mealId);
+      if (!user) {
+        localStorage.setItem('guest_saved_meals', JSON.stringify(updated));
+      }
+      return updated;
+    });
+
+    if (user) {
+      const path = `users/${user.uid}/savedMeals/${mealId}`;
+      try {
+        await deleteDoc(doc(db, `users/${user.uid}/savedMeals`, mealId));
+      } catch (err) {
+        console.error('Firestore delete saved meal error:', err);
+      }
+    }
+  };
+
+  const handleUpdateSavedMeal = async (mealId: string, updatedFields: Partial<SavedMeal>) => {
+    setSavedMeals((prev) => {
+      const updated = prev.map((m) => (m.id === mealId ? { ...m, ...updatedFields } : m));
+      if (!user) {
+        localStorage.setItem('guest_saved_meals', JSON.stringify(updated));
+      }
+      return updated;
+    });
+
+    if (user) {
+      const path = `users/${user.uid}/savedMeals/${mealId}`;
+      try {
+        const updatedMeal = {
+          ...updatedFields,
+          updatedAt: serverTimestamp(),
+        };
+        await setDoc(doc(db, `users/${user.uid}/savedMeals`, mealId), updatedMeal, { merge: true });
+      } catch (err) {
+        console.error('Firestore update saved meal error:', err);
+      }
+    }
+  };
+
+  const handleLogSavedMealToDiary = async (meal: SavedMeal) => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    await handleAddLog({
+      name: meal.name,
+      mealType: meal.mealType,
+      calories: meal.calories,
+      protein: meal.protein,
+      carbs: meal.carbs,
+      fats: meal.fats,
       date: todayStr,
       time: timeStr,
     });
@@ -441,6 +624,17 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
 
             {/* Right side user menu */}
             <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsSavedMealsOpen(true)}
+                className="p-2 text-slate-500 hover:text-amber-600 hover:bg-slate-50 rounded-xl transition flex items-center gap-1.5"
+                title="Saved Meal Ideas Library"
+              >
+                <Bookmark className="h-4 w-4 text-amber-500 fill-amber-500/20" />
+                <span className="hidden sm:inline text-xs font-semibold">Saved Library ({savedMeals.length})</span>
+              </button>
+
+              <div className="h-6 w-[1px] bg-slate-100" />
+
               <button
                 onClick={() => setIsFeedbackOpen(true)}
                 className="p-2 text-slate-500 hover:text-emerald-600 hover:bg-slate-50 rounded-xl transition flex items-center gap-1"
@@ -646,9 +840,12 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
                 <FoodLogSection
                   logs={foodLogs}
                   profile={profile}
+                  savedMeals={savedMeals}
                   onAddLog={handleAddLog}
                   onDeleteLog={handleDeleteLog}
                   onUpdateLog={handleUpdateLog}
+                  onSaveToLibrary={handleAddSavedMeal}
+                  onOpenSavedMealsModal={() => setIsSavedMealsOpen(true)}
                 />
               </motion.div>
             )}
@@ -664,7 +861,9 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
                 <MealGenerator
                   userGoal={profile?.dailyCaloricLimit ? `Deficit / Limit: ${profile.dailyCaloricLimit} kcal` : 'Eat healthy'}
                   userDietaryPreferences={profile?.dietaryPreferences || []}
+                  savedMeals={savedMeals}
                   onLogMeal={handleLogSuggestedMeal}
+                  onSaveToLibrary={handleAddSavedMeal}
                 />
               </motion.div>
             )}
@@ -699,6 +898,17 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
         isOpen={isFeedbackOpen}
         onClose={() => setIsFeedbackOpen(false)}
         onSubmit={handleAddFeedback}
+      />
+
+      {/* Saved Meals Library Modal */}
+      <SavedMealsModal
+        isOpen={isSavedMealsOpen}
+        onClose={() => setIsSavedMealsOpen(false)}
+        savedMeals={savedMeals}
+        onAddSavedMeal={handleAddSavedMeal}
+        onDeleteSavedMeal={handleDeleteSavedMeal}
+        onUpdateSavedMeal={handleUpdateSavedMeal}
+        onLogSavedMeal={handleLogSavedMealToDiary}
       />
 
       {/* Humble branding footer */}

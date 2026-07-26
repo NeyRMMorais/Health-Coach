@@ -1,17 +1,29 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Calendar, Trash2, Plus, Sparkles, AlertCircle, RefreshCw, Edit2, Check, X } from 'lucide-react';
-import { FoodLog, UserProfile } from '../types';
+import { Calendar, Trash2, Plus, Sparkles, AlertCircle, RefreshCw, Edit2, Check, X, Bookmark } from 'lucide-react';
+import { FoodLog, UserProfile, SavedMeal } from '../types';
 
 interface FoodLogSectionProps {
   logs: FoodLog[];
   profile: UserProfile | null;
+  savedMeals: SavedMeal[];
   onAddLog: (log: Omit<FoodLog, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   onDeleteLog: (id: string) => Promise<void>;
   onUpdateLog: (id: string, updatedFields: Partial<FoodLog>) => Promise<void>;
+  onSaveToLibrary: (meal: Omit<SavedMeal, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  onOpenSavedMealsModal: () => void;
 }
 
-export default function FoodLogSection({ logs, profile, onAddLog, onDeleteLog, onUpdateLog }: FoodLogSectionProps) {
+export default function FoodLogSection({
+  logs,
+  profile,
+  savedMeals,
+  onAddLog,
+  onDeleteLog,
+  onUpdateLog,
+  onSaveToLibrary,
+  onOpenSavedMealsModal,
+}: FoodLogSectionProps) {
   // Input fields
   const [name, setName] = useState<string>('');
   const [mealType, setMealType] = useState<'Breakfast' | 'Lunch' | 'Dinner' | 'Snack'>('Breakfast');
@@ -33,8 +45,52 @@ export default function FoodLogSection({ logs, profile, onAddLog, onDeleteLog, o
 
   // AI assistant input
   const [aiInput, setAiInput] = useState<string>('');
+  const [aiPromptUsed, setAiPromptUsed] = useState<string>('');
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [isRecipeSaved, setIsRecipeSaved] = useState<boolean>(false);
+
+  // Saved Meals Library tracking
+  const [savedToLibraryIds, setSavedToLibraryIds] = useState<string[]>([]);
+
+  const handleSaveLogToLibrary = async (log: FoodLog) => {
+    setSavedToLibraryIds(prev => [...prev, log.id]);
+    try {
+      await onSaveToLibrary({
+        name: log.name,
+        mealType: log.mealType,
+        calories: log.calories,
+        protein: log.protein,
+        carbs: log.carbs,
+        fats: log.fats,
+      });
+    } catch (err) {
+      console.error('Failed to save to library:', err);
+    }
+  };
+
+  const handleSaveAiPromptToLibrary = async () => {
+    if (!name.trim()) return;
+    const kcalVal = parseInt(calories) || 0;
+    const pVal = parseInt(protein) || 0;
+    const cVal = parseInt(carbs) || 0;
+    const fVal = parseInt(fats) || 0;
+
+    setIsRecipeSaved(true);
+    try {
+      await onSaveToLibrary({
+        name: name.trim(),
+        mealType,
+        calories: kcalVal,
+        protein: pVal,
+        carbs: cVal,
+        fats: fVal,
+        description: aiPromptUsed || undefined,
+      });
+    } catch (err) {
+      console.error('Failed to save to library:', err);
+    }
+  };
 
   const handleStartEdit = (log: FoodLog) => {
     setEditingLogId(log.id);
@@ -128,6 +184,8 @@ export default function FoodLogSection({ logs, profile, onAddLog, onDeleteLog, o
       }
 
       const parsed = await res.json();
+      setAiPromptUsed(aiInput.trim());
+      setIsRecipeSaved(false);
       setName(parsed.name || '');
       setCalories(String(parsed.calories ?? ''));
       setProtein(String(parsed.protein ?? ''));
@@ -367,6 +425,10 @@ export default function FoodLogSection({ logs, profile, onAddLog, onDeleteLog, o
                         }
 
                         // Normal state
+                        const isBookmarked = savedMeals.some(
+                          m => m.name.toLowerCase() === log.name.toLowerCase() && m.mealType === log.mealType && m.calories === log.calories
+                        ) || savedToLibraryIds.includes(log.id);
+
                         return (
                           <div
                             key={log.id}
@@ -392,6 +454,18 @@ export default function FoodLogSection({ logs, profile, onAddLog, onDeleteLog, o
                                 {log.calories} <span className="text-[10px] text-slate-400 font-normal">kcal</span>
                               </span>
                               <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => handleSaveLogToLibrary(log)}
+                                  disabled={isBookmarked}
+                                  className={`p-1.5 rounded-lg transition ${
+                                    isBookmarked
+                                      ? 'text-amber-500 bg-amber-50'
+                                      : 'text-slate-400 hover:text-amber-500 hover:bg-amber-50'
+                                  }`}
+                                  title={isBookmarked ? 'Saved in Meal Library' : 'Save to Meal Library'}
+                                >
+                                  <Bookmark className={`h-3.5 w-3.5 ${isBookmarked ? 'fill-amber-500' : ''}`} />
+                                </button>
                                 <button
                                   onClick={() => handleStartEdit(log)}
                                   className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-slate-50 rounded-lg transition"
@@ -422,7 +496,17 @@ export default function FoodLogSection({ logs, profile, onAddLog, onDeleteLog, o
 
       {/* Right Column: Logging tools */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-md p-6 flex flex-col space-y-4">
-        <h3 className="font-bold text-slate-800 text-md">Add Wholesome Food</h3>
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <h3 className="font-bold text-slate-800 text-md">Add Wholesome Food</h3>
+          <button
+            onClick={onOpenSavedMealsModal}
+            className="px-2.5 py-1 text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg transition flex items-center gap-1.5 border border-amber-200/60 shadow-xs"
+            title="Open Saved Meal Ideas Library"
+          >
+            <Bookmark className="h-3.5 w-3.5 fill-amber-500 text-amber-600" />
+            <span>Saved Library ({savedMeals.length})</span>
+          </button>
+        </div>
 
         {/* Tab Controls */}
         <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-100">
@@ -500,6 +584,33 @@ export default function FoodLogSection({ logs, profile, onAddLog, onDeleteLog, o
         {/* Manual Log Tab */}
         {activeTab === 'manual' && (
           <form onSubmit={handleManualSubmit} className="space-y-4">
+            {aiPromptUsed && (
+              <div className="p-3 bg-amber-50/80 border border-amber-200/80 rounded-xl space-y-1.5 text-xs text-amber-900 shadow-xs">
+                <div className="flex items-center justify-between font-bold">
+                  <span className="flex items-center gap-1 text-amber-800 text-[11px] uppercase tracking-wide">
+                    <Sparkles className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                    Original AI Recipe Prompt:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleSaveAiPromptToLibrary}
+                    disabled={isRecipeSaved}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                      isRecipeSaved
+                        ? 'bg-amber-200/60 text-amber-900 border border-amber-300'
+                        : 'bg-amber-600 hover:bg-amber-700 text-white shadow-xs'
+                    }`}
+                  >
+                    <Bookmark className={`h-3 w-3 ${isRecipeSaved ? 'fill-amber-800' : ''}`} />
+                    {isRecipeSaved ? 'Saved with Recipe!' : 'Save to Library with Recipe'}
+                  </button>
+                </div>
+                <p className="text-xs italic text-slate-700 bg-white/70 p-2 rounded-lg border border-amber-100/80 leading-relaxed">
+                  "{aiPromptUsed}"
+                </p>
+              </div>
+            )}
+
             <div>
               <label className="block text-xs font-bold text-slate-500 mb-1">FOOD ITEM / DESCRIPTION</label>
               <input
