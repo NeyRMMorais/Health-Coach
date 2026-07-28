@@ -131,7 +131,8 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
     setExercises(updated);
 
     if (willComplete) {
-      startRestTimer(restDuration);
+      const exerciseRest = updated[exIndex].restSeconds || restDuration;
+      startRestTimer(exerciseRest);
     }
   };
 
@@ -408,13 +409,41 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
                 </div>
               </div>
 
-              <button
-                onClick={() => handleRemoveExercise(exIndex)}
-                className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                title="Remove Exercise"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-3">
+                {/* Per-Exercise Rest Timer Selector */}
+                <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1 text-xs">
+                  <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-slate-400 font-medium hidden sm:inline">Rest:</span>
+                  <select
+                    value={ex.restSeconds || 90}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 90;
+                      const updated = [...exercises];
+                      updated[exIndex].restSeconds = val;
+                      setExercises(updated);
+                    }}
+                    className="bg-slate-950 text-emerald-400 font-bold border border-slate-800 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  >
+                    <option value={30}>30s</option>
+                    <option value={45}>45s</option>
+                    <option value={60}>60s (1m)</option>
+                    <option value={90}>90s (1.5m)</option>
+                    <option value={120}>120s (2m)</option>
+                    <option value={150}>150s (2.5m)</option>
+                    <option value={180}>180s (3m)</option>
+                    <option value={240}>240s (4m)</option>
+                    <option value={300}>300s (5m)</option>
+                  </select>
+                </div>
+
+                <button
+                  onClick={() => handleRemoveExercise(exIndex)}
+                  className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                  title="Remove Exercise"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Set Table */}

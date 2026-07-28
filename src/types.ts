@@ -79,6 +79,7 @@ export interface WorkoutExercise {
   targetMuscleGroup: TargetMuscleGroup;
   category: ExerciseCategory;
   sets: ExerciseSet[];
+  restSeconds?: number; // Custom rest timer per exercise in seconds (default 90s)
   notes?: string;
 }
 
@@ -110,6 +111,7 @@ export interface WorkoutRoutine {
     category: ExerciseCategory;
     targetSets: number;
     targetReps: number;
+    targetRestSeconds?: number;
   }[];
   createdAt?: any;
   updatedAt?: any;

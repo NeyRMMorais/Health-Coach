@@ -98,6 +98,7 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
         targetMuscleGroup: item.targetMuscleGroup,
         category: item.category,
         sets,
+        restSeconds: item.targetRestSeconds || 90,
       };
     });
 
