@@ -6,29 +6,31 @@ This backlog tracks upcoming feature requests, architectural improvements, and b
 
 ## 📋 Active Backlog
 
-### 1. 💧 Hydration Tracker
-*   **Goal**: Integrate a simple visual tracker to log daily water intake.
-*   **User Story**: *"I want to set a daily water goal (e.g. 2.5L) and click quick-add buttons (+250ml, +500ml) to log my water consumption throughout the day."*
-*   **Technical Details**:
-    *   Store logs in `/users/{userId}/waterLogs/{date}`.
+### 1. 🤖 Phase 2: AI Strength Coach Engine
+* **Goal**: Intelligent AI workout recommendation & progressive overload engine.
+* **User Story**: *"I want the AI coach to analyze my previous performance, RPE, and 1RM metrics to automatically calculate progressive weight/rep targets for my next session, suggest exercise substitutions, and parse natural language workout entries."*
 
 ---
 
 ## 🚀 Up Next (Medium Priority)
 
-### 2. 🏃 Exercise & Activity Log
-*   **Goal**: Track daily workouts and calculate active calories burned.
-*   **User Story**: *"I want to log my exercise (running, weightlifting) so that the calories burned are subtracted from my daily net intake budget."*
-*   **Technical Details**:
-    *   Update dashboard to show: `Net Calories = Food Consumed - Active Burned`.
+### 2. 🔗 Phase 3: Deep Health Coach Integration
+* **Goal**: Integrate active workout calories into daily net nutrition budget and sync workout logs to Firestore.
+* **User Story**: *"I want my strength workout active calories burned to subtract automatically from my daily calorie budget in the Food Diary tab."*
 
-### 3. 📉 Weight Tracking & Analytics Chart
-*   **Goal**: Monitor weight fluctuations over time to track fitness progression.
-*   **User Story**: *"I want to log my weight daily or weekly, and see a line chart under the Analytics tab showing my weight trend alongside my target weight."*
+### 3. 💧 Hydration Tracker
+* **Goal**: Integrate a simple visual tracker to log daily water intake.
 
 ---
 
 ## ✅ Completed
+
+* **🏋️ Phase 1: Strength Tracker & Gym Logger (PUSH Replica)**:
+  * **Set-by-Set Tracker**: Real-time weight (**kg**), reps, RPE (@1–@10 / Reps in Reserve), and Epley 1RM estimation ($1\text{RM} = w \times (1 + r/30)$).
+  * **Per-Exercise Rest Timers**: Rest duration selector dropdown on exercise cards ($30\text{s}$ to $300\text{s}$) + custom input capability with floating timer overlays and Web Audio synthesized completion beeps.
+  * **Multi-Day Schedule Routines**: Multi-day training schedules (Workout Sessions, Cardio Days, Rest Days) with persistent template deletion.
+  * **🗺️ Anatomical Muscle Heatmap & Recovery Visualizer**: High-fidelity 2D vector anatomical body diagram (Front Anterior & Back Posterior views) with 7-day fatigue calculations, localized recovery levels (Fresh, Recovering, Fatigued), and AI readiness recommendations.
+  * **Exercise Catalog**: Searchable catalog filtered by target muscle group and category with custom exercise creation.
 
 *   **📜 AI Recipe & Prompt Preservation**: Preserve original text prompts and ingredient measurements directly when saving meals to the library, allowing users to inspect exact components to repeat recipes accurately.
 *   **▶️ Collapsible Saved Meal Recipe Cards**: Expand/collapse (`>` / `v`) saved meal prompt details in the library modal by clicking on the meal title.
