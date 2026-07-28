@@ -934,15 +934,6 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
         onUpdateSavedMeal={handleUpdateSavedMeal}
         onLogSavedMeal={handleLogSavedMealToDiary}
       />
-
-      {/* Humble branding footer */}
-      <footer className="py-8 border-t border-slate-100 text-center bg-white">
-        <p className="text-[11px] text-slate-400 flex items-center justify-center gap-1.5 font-medium">
-          <span>Wholesome nutrition insights powered by Google AI Studio</span>
-          <span>•</span>
-          <Heart className="h-3 w-3 text-rose-500 fill-rose-500" />
-        </p>
-      </footer>
     </div>
   );
 }
