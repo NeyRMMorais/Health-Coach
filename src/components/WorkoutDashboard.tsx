@@ -1,0 +1,190 @@
+import React, { useState, useEffect } from 'react';
+import { Dumbbell, Play, Plus, BookOpen, History, Award, CheckCircle2 } from 'lucide-react';
+import { WorkoutLog, WorkoutExercise, Exercise } from '../types';
+import { ActiveWorkoutLogger } from './ActiveWorkoutLogger';
+import { RoutineManager } from './RoutineManager';
+import { ExerciseLibraryModal } from './ExerciseLibraryModal';
+import { WorkoutHistory } from './WorkoutHistory';
+
+export const WorkoutDashboard: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<'routines' | 'history' | 'library'>('routines');
+  const [activeSession, setActiveSession] = useState<{
+    name: string;
+    exercises: WorkoutExercise[];
+  } | null>(null);
+
+  const [history, setHistory] = useState<WorkoutLog[]>(() => {
+    const saved = localStorage.getItem('workout_history');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
+  });
+
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
+
+  const saveHistory = (newHistory: WorkoutLog[]) => {
+    setHistory(newHistory);
+    localStorage.setItem('workout_history', JSON.stringify(newHistory));
+  };
+
+  const handleStartCustomWorkout = () => {
+    setActiveSession({
+      name: 'Custom Workout',
+      exercises: [],
+    });
+  };
+
+  const handleStartWorkoutFromRoutine = (routineName: string, exercises: WorkoutExercise[]) => {
+    setActiveSession({
+      name: routineName,
+      exercises,
+    });
+  };
+
+  const handleFinishWorkout = (log: WorkoutLog) => {
+    const updated = [log, ...history];
+    saveHistory(updated);
+    setActiveSession(null);
+    setSuccessToast(`🎉 ${log.name} logged successfully! (${log.totalVolumeKg.toLocaleString()} kg lifted)`);
+
+    setTimeout(() => {
+      setSuccessToast(null);
+    }, 5000);
+  };
+
+  const handleDeleteWorkout = (logId: string) => {
+    const updated = history.filter((h) => h.id !== logId);
+    saveHistory(updated);
+  };
+
+  // If an active session is in progress, show Active Workout Logger
+  if (activeSession) {
+    return (
+      <ActiveWorkoutLogger
+        initialWorkoutName={activeSession.name}
+        initialExercises={activeSession.exercises}
+        onFinishWorkout={handleFinishWorkout}
+        onCancel={() => setActiveSession(null)}
+      />
+    );
+  }
+
+  return (
+    <div className="max-w-5xl mx-auto space-y-6">
+      {/* Toast Notification */}
+      {successToast && (
+        <div className="bg-emerald-500 text-slate-950 px-4 py-3 rounded-2xl font-bold text-sm shadow-xl flex items-center gap-2 animate-bounce">
+          <CheckCircle2 className="w-5 h-5" />
+          <span>{successToast}</span>
+        </div>
+      )}
+
+      {/* Main Banner */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-emerald-950/40 border border-slate-800 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-2xl relative overflow-hidden">
+        <div className="space-y-2 max-w-xl z-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold">
+            <Dumbbell className="w-3.5 h-3.5" />
+            Phase 1 • Strength Tracker Engine
+          </div>
+          <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+            Strength Workout & Gym Tracker
+          </h1>
+          <p className="text-sm text-slate-400">
+            Log your workouts set-by-set, track progressive overload volume, and calculate your 1RM metrics in real time.
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-center gap-3 z-10 w-full md:w-auto">
+          <button
+            onClick={handleStartCustomWorkout}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-sm shadow-xl shadow-emerald-500/20 transition-all hover:scale-105"
+          >
+            <Play className="w-4 h-4 fill-slate-950" />
+            Start Empty Workout
+          </button>
+        </div>
+      </div>
+
+      {/* Navigation Sub-Tabs */}
+      <div className="flex border-b border-slate-800 gap-6 text-sm font-semibold">
+        <button
+          onClick={() => setActiveTab('routines')}
+          className={`pb-3 flex items-center gap-2 border-b-2 transition-colors ${
+            activeTab === 'routines'
+              ? 'border-emerald-500 text-emerald-400 font-bold'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Dumbbell className="w-4 h-4" />
+          Routines & Templates
+        </button>
+
+        <button
+          onClick={() => setActiveTab('history')}
+          className={`pb-3 flex items-center gap-2 border-b-2 transition-colors ${
+            activeTab === 'history'
+              ? 'border-emerald-500 text-emerald-400 font-bold'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <History className="w-4 h-4" />
+          Workout History ({history.length})
+        </button>
+
+        <button
+          onClick={() => setIsLibraryOpen(true)}
+          className="pb-3 flex items-center gap-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-colors"
+        >
+          <BookOpen className="w-4 h-4" />
+          Exercise Library
+        </button>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'routines' && (
+        <RoutineManager onStartWorkoutFromRoutine={handleStartWorkoutFromRoutine} />
+      )}
+
+      {activeTab === 'history' && (
+        <WorkoutHistory history={history} onDeleteWorkout={handleDeleteWorkout} />
+      )}
+
+      {/* Exercise Library Modal (Triggered from nav tab or routine creator) */}
+      <ExerciseLibraryModal
+        isOpen={isLibraryOpen}
+        onClose={() => setIsLibraryOpen(false)}
+        onSelectExercise={(exercise) => {
+          // If no active session, start a workout with this exercise
+          setActiveSession({
+            name: `${exercise.name} Session`,
+            exercises: [
+              {
+                exerciseId: exercise.id,
+                exerciseName: exercise.name,
+                targetMuscleGroup: exercise.targetMuscleGroup,
+                category: exercise.category,
+                sets: [
+                  {
+                    id: `set-${Date.now()}-1`,
+                    setNumber: 1,
+                    weight: 20,
+                    reps: 10,
+                    rpe: 8,
+                    completed: false,
+                    isWarmup: false,
+                  },
+                ],
+              },
+            ],
+          });
+        }}
+      />
+    </div>
+  );
+};
