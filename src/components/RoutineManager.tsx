@@ -18,7 +18,24 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
     let customRoutines: WorkoutRoutine[] = [];
     if (savedCustom) {
       try {
-        customRoutines = JSON.parse(savedCustom);
+        const parsed = JSON.parse(savedCustom);
+        customRoutines = parsed.map((r: any) => {
+          if (!Array.isArray(r.days)) {
+            return {
+              ...r,
+              days: [
+                {
+                  id: `day-${r.id || Date.now()}-1`,
+                  dayNumber: 1,
+                  dayName: 'D1 - Workout Session',
+                  type: 'workout',
+                  exercises: Array.isArray(r.exercises) ? r.exercises : [],
+                },
+              ],
+            };
+          }
+          return r;
+        });
       } catch (e) {
         customRoutines = [];
       }
@@ -472,9 +489,10 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {routines.map((routine) => {
-            const workoutDaysCount = routine.days.filter((d) => d.type === 'workout').length;
-            const restDaysCount = routine.days.filter((d) => d.type === 'rest').length;
-            const cardioDaysCount = routine.days.filter((d) => d.type === 'cardio').length;
+            const daysList = Array.isArray(routine.days) ? routine.days : [];
+            const workoutDaysCount = daysList.filter((d) => d.type === 'workout').length;
+            const restDaysCount = daysList.filter((d) => d.type === 'rest').length;
+            const cardioDaysCount = daysList.filter((d) => d.type === 'cardio').length;
 
             return (
               <div
@@ -487,7 +505,7 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
                     <div>
                       <div className="flex flex-wrap items-center gap-1.5 mb-2">
                         <span className="text-[10px] px-2.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
-                          {routine.days.length} Days Total
+                          {daysList.length} Days Total
                         </span>
                         <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700">
                           {workoutDaysCount} Workouts
@@ -532,7 +550,7 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
                       Schedule Days:
                     </span>
 
-                    {routine.days.map((day) => (
+                    {daysList.map((day) => (
                       <div
                         key={day.id}
                         className="p-3 bg-slate-950/80 border border-slate-800 rounded-xl flex flex-wrap items-center justify-between gap-2"
