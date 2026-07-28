@@ -689,7 +689,7 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 space-y-6">
           
           {/* Main Visual Tabs (Daily Tracker vs Meal Generator vs Analytics vs Strength) */}
-          <div className="flex bg-white p-1 rounded-xl border border-slate-100 shadow-sm max-w-lg overflow-x-auto scrollbar-none">
+          <div className="flex bg-white p-1 rounded-xl border border-slate-100 shadow-sm max-w-xl overflow-x-auto scrollbar-none">
             <button
               onClick={() => setActiveTab('tracker')}
               className={`flex-1 py-2 px-3 text-xs font-semibold rounded-lg transition-all duration-150 whitespace-nowrap ${
@@ -699,17 +699,6 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
               }`}
             >
               📊 Food Diary
-            </button>
-            <button
-              onClick={() => setActiveTab('strength')}
-              className={`flex-1 py-2 px-3 text-xs font-semibold rounded-lg transition-all duration-150 flex items-center justify-center gap-1 whitespace-nowrap ${
-                activeTab === 'strength'
-                  ? 'bg-emerald-600 text-white shadow'
-                  : 'text-slate-600 hover:text-slate-800'
-              }`}
-            >
-              <Dumbbell className="h-3.5 w-3.5 text-white" />
-              Strength Coach
             </button>
             <button
               onClick={() => setActiveTab('suggest')}
@@ -731,6 +720,17 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
               }`}
             >
               📈 Analytics
+            </button>
+            <button
+              onClick={() => setActiveTab('strength')}
+              className={`flex-1 py-2 px-3 text-xs font-semibold rounded-lg transition-all duration-150 flex items-center justify-center gap-1 whitespace-nowrap ${
+                activeTab === 'strength'
+                  ? 'bg-emerald-600 text-white shadow'
+                  : 'text-slate-600 hover:text-slate-800'
+              }`}
+            >
+              <Dumbbell className="h-3.5 w-3.5 text-white" />
+              Strength Coach
             </button>
           </div>
 
