@@ -86,7 +86,7 @@ export const WorkoutDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Main Banner */}
+      {/* Header Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-emerald-950/40 border border-slate-800 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-2xl relative overflow-hidden">
         <div className="space-y-2 max-w-xl z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold">
@@ -99,16 +99,6 @@ export const WorkoutDashboard: React.FC = () => {
           <p className="text-sm text-slate-400">
             Log your workouts set-by-set, track progressive overload volume, and calculate your 1RM metrics in real time.
           </p>
-        </div>
-
-        <div className="flex flex-col sm:flex-row items-center gap-3 z-10 w-full md:w-auto">
-          <button
-            onClick={handleStartCustomWorkout}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-sm shadow-xl shadow-emerald-500/20 transition-all hover:scale-105"
-          >
-            <Play className="w-4 h-4 fill-slate-950" />
-            Start Empty Workout
-          </button>
         </div>
       </div>
 
