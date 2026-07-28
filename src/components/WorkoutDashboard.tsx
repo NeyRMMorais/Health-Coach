@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Dumbbell, Play, Plus, BookOpen, History, Award, CheckCircle2 } from 'lucide-react';
+import { Dumbbell, Play, Plus, BookOpen, History, Award, CheckCircle2, Activity } from 'lucide-react';
 import { WorkoutLog, WorkoutExercise, Exercise } from '../types';
 import { ActiveWorkoutLogger } from './ActiveWorkoutLogger';
 import { RoutineManager } from './RoutineManager';
 import { ExerciseLibraryModal } from './ExerciseLibraryModal';
 import { WorkoutHistory } from './WorkoutHistory';
+import { BodyHeatmapView } from './BodyHeatmapView';
 
 export const WorkoutDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'routines' | 'history' | 'library'>('routines');
+  const [activeTab, setActiveTab] = useState<'routines' | 'heatmap' | 'history' | 'library'>('routines');
   const [activeSession, setActiveSession] = useState<{
     name: string;
     exercises: WorkoutExercise[];
@@ -112,22 +113,34 @@ export const WorkoutDashboard: React.FC = () => {
       </div>
 
       {/* Navigation Sub-Tabs */}
-      <div className="flex border-b border-slate-200 gap-6 text-sm font-semibold">
+      <div className="flex border-b border-slate-200 gap-6 text-sm font-semibold overflow-x-auto scrollbar-none">
         <button
           onClick={() => setActiveTab('routines')}
-          className={`pb-3 flex items-center gap-2 border-b-2 transition-colors ${
+          className={`pb-3 flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'routines'
               ? 'border-emerald-600 text-emerald-600 font-bold'
               : 'border-transparent text-slate-600 hover:text-slate-900'
           }`}
         >
           <Dumbbell className="w-4 h-4" />
-          Routines & Templates
+          Routines & Schedules
+        </button>
+
+        <button
+          onClick={() => setActiveTab('heatmap')}
+          className={`pb-3 flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'heatmap'
+              ? 'border-emerald-600 text-emerald-600 font-bold'
+              : 'border-transparent text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Activity className="w-4 h-4" />
+          Muscle Recovery Heatmap
         </button>
 
         <button
           onClick={() => setActiveTab('history')}
-          className={`pb-3 flex items-center gap-2 border-b-2 transition-colors ${
+          className={`pb-3 flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'history'
               ? 'border-emerald-600 text-emerald-600 font-bold'
               : 'border-transparent text-slate-600 hover:text-slate-900'
@@ -139,7 +152,7 @@ export const WorkoutDashboard: React.FC = () => {
 
         <button
           onClick={() => setIsLibraryOpen(true)}
-          className="pb-3 flex items-center gap-2 border-b-2 border-transparent text-slate-600 hover:text-slate-900 transition-colors"
+          className="pb-3 flex items-center gap-2 border-b-2 border-transparent text-slate-600 hover:text-slate-900 transition-colors whitespace-nowrap"
         >
           <BookOpen className="w-4 h-4" />
           Exercise Library
@@ -149,6 +162,10 @@ export const WorkoutDashboard: React.FC = () => {
       {/* Tab Content */}
       {activeTab === 'routines' && (
         <RoutineManager onStartWorkoutFromRoutine={handleStartWorkoutFromRoutine} />
+      )}
+
+      {activeTab === 'heatmap' && (
+        <BodyHeatmapView workoutLogs={history} />
       )}
 
       {activeTab === 'history' && (
