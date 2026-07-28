@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Play, Plus, Dumbbell, Trash2, Edit, Check, ChevronRight, X } from 'lucide-react';
-import { WorkoutRoutine, WorkoutExercise, Exercise, TargetMuscleGroup } from '../types';
+import { Play, Plus, Dumbbell, Trash2, Edit, Check, ChevronRight, X, Calendar, HeartPulse, Flame, Sun, Layers } from 'lucide-react';
+import { WorkoutRoutine, RoutineDay, RoutineDayType, WorkoutExercise, Exercise, TargetMuscleGroup } from '../types';
 import { DEFAULT_ROUTINES } from '../data/defaultRoutines';
 import { ExerciseLibraryModal } from './ExerciseLibraryModal';
 
@@ -9,53 +9,98 @@ interface RoutineManagerProps {
 }
 
 export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFromRoutine }) => {
+  // Load saved routines or defaults (ignoring deleted templates stored in localStorage)
   const [routines, setRoutines] = useState<WorkoutRoutine[]>(() => {
-    const saved = localStorage.getItem('custom_routines');
-    if (saved) {
+    const savedDeleted = localStorage.getItem('deleted_routine_ids');
+    const deletedIds: string[] = savedDeleted ? JSON.parse(savedDeleted) : [];
+
+    const savedCustom = localStorage.getItem('custom_routines');
+    let customRoutines: WorkoutRoutine[] = [];
+    if (savedCustom) {
       try {
-        const custom: WorkoutRoutine[] = JSON.parse(saved);
-        return [...DEFAULT_ROUTINES, ...custom];
+        customRoutines = JSON.parse(savedCustom);
       } catch (e) {
-        return DEFAULT_ROUTINES;
+        customRoutines = [];
       }
     }
-    return DEFAULT_ROUTINES;
+
+    const combined = [...DEFAULT_ROUTINES, ...customRoutines];
+    return combined.filter((r) => !deletedIds.includes(r.id));
   });
 
   // Routine Creation State
   const [isCreating, setIsCreating] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [newDescription, setNewDescription] = useState('');
-  const [newExercises, setNewExercises] = useState<
-    { exerciseId: string; exerciseName: string; targetMuscleGroup: TargetMuscleGroup; category: any; targetSets: number; targetReps: number }[]
-  >([]);
+  const [routineTitle, setRoutineTitle] = useState('');
+  const [routineDesc, setRoutineDesc] = useState('');
+  const [days, setDays] = useState<RoutineDay[]>([
+    { id: `day-${Date.now()}-1`, dayNumber: 1, dayName: 'D1 - Workout Session', type: 'workout', exercises: [] },
+  ]);
 
+  // Track which day is currently being edited in the modal
+  const [activeEditingDayIndex, setActiveEditingDayIndex] = useState<number>(0);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
 
-  const handleAddExerciseToRoutine = (exercise: Exercise) => {
-    setNewExercises((prev) => [
-      ...prev,
-      {
-        exerciseId: exercise.id,
-        exerciseName: exercise.name,
-        targetMuscleGroup: exercise.targetMuscleGroup,
-        category: exercise.category,
-        targetSets: 3,
-        targetReps: 10,
-      },
-    ]);
+  const handleAddDay = () => {
+    const nextNum = days.length + 1;
+    const newDay: RoutineDay = {
+      id: `day-${Date.now()}-${nextNum}`,
+      dayNumber: nextNum,
+      dayName: `D${nextNum} - Workout Session`,
+      type: 'workout',
+      exercises: [],
+    };
+    setDays((prev) => [...prev, newDay]);
+    setActiveEditingDayIndex(days.length);
+  };
+
+  const handleRemoveDay = (index: number) => {
+    if (days.length <= 1) return;
+    const updated = [...days];
+    updated.splice(index, 1);
+    // Reindex dayNumbers
+    updated.forEach((d, i) => {
+      d.dayNumber = i + 1;
+    });
+    setDays(updated);
+    if (activeEditingDayIndex >= updated.length) {
+      setActiveEditingDayIndex(Math.max(0, updated.length - 1));
+    }
+  };
+
+  const handleAddExerciseToCurrentDay = (exercise: Exercise) => {
+    const updatedDays = [...days];
+    const currentDay = updatedDays[activeEditingDayIndex];
+    if (!currentDay.exercises) currentDay.exercises = [];
+
+    currentDay.exercises.push({
+      exerciseId: exercise.id,
+      exerciseName: exercise.name,
+      targetMuscleGroup: exercise.targetMuscleGroup,
+      category: exercise.category,
+      targetSets: 3,
+      targetReps: 10,
+      targetRestSeconds: 90,
+    });
+
+    setDays(updatedDays);
+  };
+
+  const handleRemoveExerciseFromDay = (dayIdx: number, exIdx: number) => {
+    const updatedDays = [...days];
+    updatedDays[dayIdx].exercises?.splice(exIdx, 1);
+    setDays(updatedDays);
   };
 
   const handleSaveRoutine = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim() || newExercises.length === 0) return;
+    if (!routineTitle.trim() || days.length === 0) return;
 
     const newRoutine: WorkoutRoutine = {
-      id: `routine-${Date.now()}`,
+      id: `routine-custom-${Date.now()}`,
       userId: 'guest',
-      title: newTitle.trim(),
-      description: newDescription.trim() || 'Custom workout routine',
-      exercises: newExercises,
+      title: routineTitle.trim(),
+      description: routineDesc.trim() || 'Custom multi-day training schedule',
+      days,
       createdAt: new Date().toISOString(),
     };
 
@@ -63,25 +108,38 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
     setRoutines(updated);
 
     // Save custom routines to localStorage
-    const customOnly = updated.filter((r) => r.id.startsWith('routine-') && !r.id.startsWith('routine-push') && !r.id.startsWith('routine-pull') && !r.id.startsWith('routine-leg'));
+    const customOnly = updated.filter((r) => r.id.startsWith('routine-custom-'));
     localStorage.setItem('custom_routines', JSON.stringify(customOnly));
 
-    setNewTitle('');
-    setNewDescription('');
-    setNewExercises([]);
+    // Reset form
+    setRoutineTitle('');
+    setRoutineDesc('');
+    setDays([{ id: `day-${Date.now()}-1`, dayNumber: 1, dayName: 'D1 - Workout Session', type: 'workout', exercises: [] }]);
     setIsCreating(false);
   };
 
   const handleDeleteRoutine = (routineId: string) => {
+    // Remove from active state
     const updated = routines.filter((r) => r.id !== routineId);
     setRoutines(updated);
-    const customOnly = updated.filter((r) => r.id.startsWith('routine-') && !r.id.startsWith('routine-push') && !r.id.startsWith('routine-pull') && !r.id.startsWith('routine-leg'));
+
+    // Persist deleted IDs so default templates can be erased persistently
+    const savedDeleted = localStorage.getItem('deleted_routine_ids');
+    const deletedIds: string[] = savedDeleted ? JSON.parse(savedDeleted) : [];
+    if (!deletedIds.includes(routineId)) {
+      deletedIds.push(routineId);
+      localStorage.setItem('deleted_routine_ids', JSON.stringify(deletedIds));
+    }
+
+    // Also update custom routines list if it was a custom one
+    const customOnly = updated.filter((r) => r.id.startsWith('routine-custom-'));
     localStorage.setItem('custom_routines', JSON.stringify(customOnly));
   };
 
-  const handleLaunchRoutine = (routine: WorkoutRoutine) => {
-    // Convert routine template to WorkoutExercise[] with initial sets
-    const initialWorkoutExercises: WorkoutExercise[] = routine.exercises.map((item) => {
+  const handleLaunchDayWorkout = (routineTitle: string, day: RoutineDay) => {
+    if (!day.exercises || day.exercises.length === 0) return;
+
+    const initialWorkoutExercises: WorkoutExercise[] = day.exercises.map((item) => {
       const sets = Array.from({ length: item.targetSets }).map((_, idx) => ({
         id: `set-${Date.now()}-${idx}`,
         setNumber: idx + 1,
@@ -102,7 +160,7 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
       };
     });
 
-    onStartWorkoutFromRoutine(routine.title, initialWorkoutExercises);
+    onStartWorkoutFromRoutine(`${routineTitle} • ${day.dayName}`, initialWorkoutExercises);
   };
 
   return (
@@ -110,23 +168,25 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
       {/* Header Bar */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Workout Routines & Templates</h2>
-          <p className="text-xs text-slate-500 font-medium">Launch a saved routine or create a custom workout split</p>
+          <h2 className="text-xl font-bold text-slate-900">Workout Routines & Multi-Day Schedules</h2>
+          <p className="text-xs text-slate-500 font-medium">
+            Build and manage multi-day training splits (workouts, cardio sessions & rest days)
+          </p>
         </div>
         <button
           onClick={() => setIsCreating(true)}
           className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold shadow-lg shadow-emerald-500/20 transition-all"
         >
           <Plus className="w-4 h-4" />
-          Create Routine
+          Create Schedule
         </button>
       </div>
 
       {/* Routine Creation Form */}
       {isCreating && (
-        <form onSubmit={handleSaveRoutine} className="bg-slate-900 border border-emerald-500/30 rounded-2xl p-6 space-y-4 shadow-2xl">
+        <form onSubmit={handleSaveRoutine} className="bg-slate-900 border border-emerald-500/30 rounded-2xl p-6 space-y-6 shadow-2xl">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <h3 className="text-base font-bold text-emerald-400">Create New Workout Routine</h3>
+            <h3 className="text-base font-bold text-emerald-400">Create Multi-Day Training Schedule</h3>
             <button
               type="button"
               onClick={() => setIsCreating(false)}
@@ -141,9 +201,9 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
               <label className="text-xs text-slate-400 mb-1 block font-medium">Routine Title</label>
               <input
                 type="text"
-                placeholder="e.g. Upper Body Power"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="e.g. 5-Day Push/Pull/Legs + Rest Schedule"
+                value={routineTitle}
+                onChange={(e) => setRoutineTitle(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
                 required
               />
@@ -152,82 +212,233 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
               <label className="text-xs text-slate-400 mb-1 block font-medium">Description (Optional)</label>
               <input
                 type="text"
-                placeholder="e.g. Hypertrophy focus with 8-12 reps"
-                value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
+                placeholder="e.g. Upper body focus with 2 rest days per week"
+                value={routineDesc}
+                onChange={(e) => setRoutineDesc(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
               />
             </div>
           </div>
 
-          {/* Exercise List for Routine */}
-          <div className="space-y-3">
+          {/* Day Schedule Builder */}
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-300">Exercises ({newExercises.length})</span>
+              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                Schedule Days ({days.length} Days)
+              </span>
               <button
                 type="button"
-                onClick={() => setIsLibraryOpen(true)}
-                className="text-xs text-emerald-400 hover:underline flex items-center gap-1"
+                onClick={handleAddDay}
+                className="text-xs text-emerald-400 hover:underline flex items-center gap-1 font-semibold"
               >
-                <Plus className="w-3.5 h-3.5" /> Add Exercise
+                <Plus className="w-4 h-4" /> Add Day
               </button>
             </div>
 
-            {newExercises.length === 0 ? (
-              <div className="bg-slate-950 border border-slate-800 border-dashed rounded-xl p-6 text-center text-xs text-slate-500">
-                No exercises added to this routine yet. Click "Add Exercise" above.
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {newExercises.map((ex, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-xl">
-                    <div>
-                      <h4 className="text-xs font-bold text-white">{ex.exerciseName}</h4>
-                      <span className="text-[10px] text-emerald-400">{ex.targetMuscleGroup} • {ex.category}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1 text-xs">
-                        <input
-                          type="number"
-                          min="1"
-                          max="10"
-                          value={ex.targetSets}
-                          onChange={(e) => {
-                            const updated = [...newExercises];
-                            updated[idx].targetSets = parseInt(e.target.value) || 1;
-                            setNewExercises(updated);
-                          }}
-                          className="w-12 bg-slate-900 border border-slate-800 rounded px-1.5 py-1 text-center text-white"
-                        />
-                        <span className="text-slate-500">sets ×</span>
-                        <input
-                          type="number"
-                          min="1"
-                          max="50"
-                          value={ex.targetReps}
-                          onChange={(e) => {
-                            const updated = [...newExercises];
-                            updated[idx].targetReps = parseInt(e.target.value) || 1;
-                            setNewExercises(updated);
-                          }}
-                          className="w-14 bg-slate-900 border border-slate-800 rounded px-1.5 py-1 text-center text-white"
-                        />
-                        <span className="text-slate-500">reps</span>
-                      </div>
+            {/* Day Selector Tabs */}
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+              {days.map((d, idx) => (
+                <button
+                  key={d.id}
+                  type="button"
+                  onClick={() => setActiveEditingDayIndex(idx)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-2 transition-all ${
+                    activeEditingDayIndex === idx
+                      ? 'bg-emerald-500 text-slate-950 shadow-md'
+                      : 'bg-slate-950 text-slate-400 hover:bg-slate-800 border border-slate-800'
+                  }`}
+                >
+                  <span>D{d.dayNumber}</span>
+                  <span className="text-[10px] opacity-80 uppercase">({d.type})</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Active Day Detail Configurator */}
+            {days[activeEditingDayIndex] && (
+              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 flex-1">
+                    <input
+                      type="text"
+                      value={days[activeEditingDayIndex].dayName}
+                      onChange={(e) => {
+                        const updated = [...days];
+                        updated[activeEditingDayIndex].dayName = e.target.value;
+                        setDays(updated);
+                      }}
+                      className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white font-semibold focus:outline-none focus:border-emerald-500"
+                      placeholder="Day Name"
+                    />
+
+                    {/* Day Type Selector */}
+                    <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-lg border border-slate-800 text-xs">
                       <button
                         type="button"
                         onClick={() => {
-                          const updated = [...newExercises];
-                          updated.splice(idx, 1);
-                          setNewExercises(updated);
+                          const updated = [...days];
+                          updated[activeEditingDayIndex].type = 'workout';
+                          setDays(updated);
                         }}
-                        className="text-slate-500 hover:text-red-400"
+                        className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+                          days[activeEditingDayIndex].type === 'workout'
+                            ? 'bg-emerald-500 text-slate-950 font-bold'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        🏋️ Workout
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = [...days];
+                          updated[activeEditingDayIndex].type = 'cardio';
+                          setDays(updated);
+                        }}
+                        className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+                          days[activeEditingDayIndex].type === 'cardio'
+                            ? 'bg-amber-500 text-slate-950 font-bold'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        🏃 Aerobic
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = [...days];
+                          updated[activeEditingDayIndex].type = 'rest';
+                          setDays(updated);
+                        }}
+                        className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+                          days[activeEditingDayIndex].type === 'rest'
+                            ? 'bg-blue-500 text-slate-950 font-bold'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        🧘 Rest Day
                       </button>
                     </div>
                   </div>
-                ))}
+
+                  {days.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveDay(activeEditingDayIndex)}
+                      className="text-xs text-red-400 hover:underline flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> Delete Day
+                    </button>
+                  )}
+                </div>
+
+                {/* Content based on Day Type */}
+                {days[activeEditingDayIndex].type === 'rest' && (
+                  <div className="p-4 bg-slate-900 border border-slate-800 rounded-lg text-slate-400 text-xs space-y-2">
+                    <p className="font-semibold text-blue-400">🧘 Rest & Recovery Day</p>
+                    <input
+                      type="text"
+                      placeholder="Notes (e.g. Light stretching, foam rolling, 8 hours sleep)"
+                      value={days[activeEditingDayIndex].notes || ''}
+                      onChange={(e) => {
+                        const updated = [...days];
+                        updated[activeEditingDayIndex].notes = e.target.value;
+                        setDays(updated);
+                      }}
+                      className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-white"
+                    />
+                  </div>
+                )}
+
+                {days[activeEditingDayIndex].type === 'cardio' && (
+                  <div className="p-4 bg-slate-900 border border-slate-800 rounded-lg text-slate-400 text-xs space-y-2">
+                    <p className="font-semibold text-amber-400">🏃 Aerobic / Cardio Session</p>
+                    <input
+                      type="text"
+                      placeholder="Notes (e.g. 30-45 mins Zone 2 cardio cycling/treadmill)"
+                      value={days[activeEditingDayIndex].notes || ''}
+                      onChange={(e) => {
+                        const updated = [...days];
+                        updated[activeEditingDayIndex].notes = e.target.value;
+                        setDays(updated);
+                      }}
+                      className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-white"
+                    />
+                  </div>
+                )}
+
+                {days[activeEditingDayIndex].type === 'workout' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-slate-300">
+                        Exercises ({days[activeEditingDayIndex].exercises?.length || 0})
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsLibraryOpen(true)}
+                        className="text-xs text-emerald-400 hover:underline flex items-center gap-1 font-semibold"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Add Exercise to Day {days[activeEditingDayIndex].dayNumber}
+                      </button>
+                    </div>
+
+                    {(!days[activeEditingDayIndex].exercises || days[activeEditingDayIndex].exercises!.length === 0) ? (
+                      <div className="bg-slate-900 border border-slate-800 border-dashed rounded-xl p-4 text-center text-xs text-slate-500">
+                        No exercises added to this workout day yet. Click "Add Exercise to Day" above.
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {days[activeEditingDayIndex].exercises!.map((ex, exIdx) => (
+                          <div key={exIdx} className="flex flex-wrap items-center justify-between p-3 bg-slate-900 border border-slate-800 rounded-xl gap-2">
+                            <div>
+                              <h4 className="text-xs font-bold text-white">{ex.exerciseName}</h4>
+                              <span className="text-[10px] text-emerald-400">{ex.targetMuscleGroup} • {ex.category}</span>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-1 text-xs">
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="10"
+                                  value={ex.targetSets}
+                                  onChange={(e) => {
+                                    const updated = [...days];
+                                    updated[activeEditingDayIndex].exercises![exIdx].targetSets = parseInt(e.target.value) || 1;
+                                    setDays(updated);
+                                  }}
+                                  className="w-12 bg-slate-950 border border-slate-800 rounded px-1.5 py-1 text-center text-white"
+                                />
+                                <span className="text-slate-500">sets ×</span>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="50"
+                                  value={ex.targetReps}
+                                  onChange={(e) => {
+                                    const updated = [...days];
+                                    updated[activeEditingDayIndex].exercises![exIdx].targetReps = parseInt(e.target.value) || 1;
+                                    setDays(updated);
+                                  }}
+                                  className="w-14 bg-slate-950 border border-slate-800 rounded px-1.5 py-1 text-center text-white"
+                                />
+                                <span className="text-slate-500">reps</span>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveExerciseFromDay(activeEditingDayIndex, exIdx)}
+                                className="text-slate-500 hover:text-red-400"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -242,79 +453,143 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
             </button>
             <button
               type="submit"
-              disabled={newExercises.length === 0 || !newTitle.trim()}
+              disabled={!routineTitle.trim() || days.length === 0}
               className="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 disabled:opacity-50"
             >
-              Save Routine
+              Save Training Schedule
             </button>
           </div>
         </form>
       )}
 
       {/* Routine Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {routines.map((routine) => (
-          <div
-            key={routine.id}
-            className="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-5 flex flex-col justify-between shadow-lg transition-all group"
-          >
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
-                  {routine.exercises.length} Exercises
-                </span>
-                {!['routine-push-day', 'routine-pull-day', 'routine-leg-day'].includes(routine.id) && (
-                  <button
-                    onClick={() => handleDeleteRoutine(routine.id)}
-                    className="text-slate-600 hover:text-red-400 transition-colors p-1"
-                    title="Delete Routine"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
+      {routines.length === 0 ? (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center text-slate-500 space-y-3">
+          <Layers className="w-8 h-8 mx-auto opacity-50 text-emerald-400" />
+          <p className="text-sm font-semibold text-white">No training routines saved</p>
+          <p className="text-xs text-slate-400">Click "Create Schedule" above to build a custom multi-day routine.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {routines.map((routine) => {
+            const workoutDaysCount = routine.days.filter((d) => d.type === 'workout').length;
+            const restDaysCount = routine.days.filter((d) => d.type === 'rest').length;
+            const cardioDaysCount = routine.days.filter((d) => d.type === 'cardio').length;
 
-              <h3 className="text-base font-bold text-white group-hover:text-emerald-400 transition-colors">
-                {routine.title}
-              </h3>
-              {routine.description && (
-                <p className="text-xs text-slate-400 mt-1 line-clamp-2">{routine.description}</p>
-              )}
+            return (
+              <div
+                key={routine.id}
+                className="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-6 flex flex-col justify-between shadow-xl transition-all group"
+              >
+                <div className="space-y-4">
+                  {/* Header & Delete Button */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                        <span className="text-[10px] px-2.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
+                          {routine.days.length} Days Total
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700">
+                          {workoutDaysCount} Workouts
+                        </span>
+                        {cardioDaysCount > 0 && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                            {cardioDaysCount} Cardio
+                          </span>
+                        )}
+                        {restDaysCount > 0 && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                            {restDaysCount} Rest
+                          </span>
+                        )}
+                      </div>
 
-              {/* Exercise Summary Preview */}
-              <div className="mt-4 space-y-1.5 border-t border-slate-800/80 pt-3">
-                {routine.exercises.slice(0, 4).map((ex, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-xs text-slate-300">
-                    <span className="truncate max-w-[180px]">{ex.exerciseName}</span>
-                    <span className="text-[11px] font-mono text-slate-500">
-                      {ex.targetSets} × {ex.targetReps}
+                      <h3 className="text-lg font-bold text-white group-hover:text-emerald-400 transition-colors">
+                        {routine.title}
+                      </h3>
+                      {routine.description && (
+                        <p className="text-xs text-slate-400 mt-1 line-clamp-2">{routine.description}</p>
+                      )}
+                    </div>
+
+                    {/* Delete Routine / Template Button (Works for ALL templates!) */}
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`Are you sure you want to erase template "${routine.title}"?`)) {
+                          handleDeleteRoutine(routine.id);
+                        }
+                      }}
+                      className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors shrink-0"
+                      title="Erase Routine / Template"
+                    >
+                      <Trash2 className="w-4.5 h-4.5" />
+                    </button>
+                  </div>
+
+                  {/* Multi-Day Schedule Breakdown */}
+                  <div className="space-y-2 border-t border-slate-800/80 pt-4">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
+                      Schedule Days:
                     </span>
+
+                    {routine.days.map((day) => (
+                      <div
+                        key={day.id}
+                        className="p-3 bg-slate-950/80 border border-slate-800 rounded-xl flex flex-wrap items-center justify-between gap-2"
+                      >
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-white">{day.dayName}</span>
+                            <span
+                              className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                                day.type === 'workout'
+                                  ? 'bg-emerald-500/20 text-emerald-300'
+                                  : day.type === 'cardio'
+                                  ? 'bg-amber-500/20 text-amber-300'
+                                  : 'bg-blue-500/20 text-blue-300'
+                              }`}
+                            >
+                              {day.type}
+                            </span>
+                          </div>
+
+                          {day.type === 'workout' && day.exercises && (
+                            <div className="text-[11px] text-slate-400">
+                              {day.exercises.length} exercises (
+                              {day.exercises.slice(0, 3).map((e) => e.exerciseName).join(', ')}
+                              {day.exercises.length > 3 ? '...' : ''})
+                            </div>
+                          )}
+
+                          {(day.type === 'rest' || day.type === 'cardio') && day.notes && (
+                            <div className="text-[11px] text-slate-400 italic">{day.notes}</div>
+                          )}
+                        </div>
+
+                        {day.type === 'workout' && day.exercises && day.exercises.length > 0 && (
+                          <button
+                            onClick={() => handleLaunchDayWorkout(routine.title, day)}
+                            className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold flex items-center gap-1 shadow-md transition-all shrink-0"
+                          >
+                            <Play className="w-3.5 h-3.5 fill-slate-950" />
+                            Start Day {day.dayNumber}
+                          </button>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                ))}
-                {routine.exercises.length > 4 && (
-                  <div className="text-[11px] text-slate-500 italic">
-                    +{routine.exercises.length - 4} more exercises...
-                  </div>
-                )}
+                </div>
               </div>
-            </div>
+            );
+          })}
+        </div>
+      )}
 
-            <button
-              onClick={() => handleLaunchRoutine(routine)}
-              className="mt-5 w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/10 transition-all"
-            >
-              <Play className="w-4 h-4 fill-slate-950" />
-              Start Workout
-            </button>
-          </div>
-        ))}
-      </div>
-
-      {/* Exercise Selector Modal for Routine Creator */}
+      {/* Exercise Selector Modal for Schedule Creator */}
       <ExerciseLibraryModal
         isOpen={isLibraryOpen}
         onClose={() => setIsLibraryOpen(false)}
-        onSelectExercise={handleAddExerciseToRoutine}
+        onSelectExercise={handleAddExerciseToCurrentDay}
       />
     </div>
   );

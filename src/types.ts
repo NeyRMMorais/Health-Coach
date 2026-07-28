@@ -98,13 +98,14 @@ export interface WorkoutLog {
   updatedAt?: any;
 }
 
-export interface WorkoutRoutine {
+export type RoutineDayType = 'workout' | 'rest' | 'cardio';
+
+export interface RoutineDay {
   id: string;
-  userId: string;
-  title: string;
-  description?: string;
-  targetMuscleGroup?: TargetMuscleGroup;
-  exercises: {
+  dayNumber: number; // 1, 2, 3...
+  dayName: string; // e.g. "D1 - Upper Body", "D2 - Rest Day"
+  type: RoutineDayType;
+  exercises?: {
     exerciseId: string;
     exerciseName: string;
     targetMuscleGroup: TargetMuscleGroup;
@@ -113,6 +114,15 @@ export interface WorkoutRoutine {
     targetReps: number;
     targetRestSeconds?: number;
   }[];
+  notes?: string;
+}
+
+export interface WorkoutRoutine {
+  id: string;
+  userId: string;
+  title: string;
+  description?: string;
+  days: RoutineDay[];
   createdAt?: any;
   updatedAt?: any;
 }
