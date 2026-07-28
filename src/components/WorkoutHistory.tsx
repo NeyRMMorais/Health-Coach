@@ -54,7 +54,7 @@ export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ history, onDelet
 
       {/* History List */}
       <div className="space-y-4">
-        <h3 className="text-lg font-bold text-white">Workout History</h3>
+        <h3 className="text-lg font-bold text-slate-900">Workout History</h3>
 
         {history.length === 0 ? (
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center text-slate-500">

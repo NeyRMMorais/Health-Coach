@@ -109,8 +109,8 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
       {/* Header Bar */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-white">Workout Routines & Templates</h2>
-          <p className="text-xs text-slate-400">Launch a saved routine or create a custom workout split</p>
+          <h2 className="text-xl font-bold text-slate-900">Workout Routines & Templates</h2>
+          <p className="text-xs text-slate-500 font-medium">Launch a saved routine or create a custom workout split</p>
         </div>
         <button
           onClick={() => setIsCreating(true)}

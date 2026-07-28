@@ -112,13 +112,13 @@ export const WorkoutDashboard: React.FC = () => {
       </div>
 
       {/* Navigation Sub-Tabs */}
-      <div className="flex border-b border-slate-800 gap-6 text-sm font-semibold">
+      <div className="flex border-b border-slate-200 gap-6 text-sm font-semibold">
         <button
           onClick={() => setActiveTab('routines')}
           className={`pb-3 flex items-center gap-2 border-b-2 transition-colors ${
             activeTab === 'routines'
-              ? 'border-emerald-500 text-emerald-400 font-bold'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-emerald-600 text-emerald-600 font-bold'
+              : 'border-transparent text-slate-600 hover:text-slate-900'
           }`}
         >
           <Dumbbell className="w-4 h-4" />
@@ -129,8 +129,8 @@ export const WorkoutDashboard: React.FC = () => {
           onClick={() => setActiveTab('history')}
           className={`pb-3 flex items-center gap-2 border-b-2 transition-colors ${
             activeTab === 'history'
-              ? 'border-emerald-500 text-emerald-400 font-bold'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-emerald-600 text-emerald-600 font-bold'
+              : 'border-transparent text-slate-600 hover:text-slate-900'
           }`}
         >
           <History className="w-4 h-4" />
@@ -139,7 +139,7 @@ export const WorkoutDashboard: React.FC = () => {
 
         <button
           onClick={() => setIsLibraryOpen(true)}
-          className="pb-3 flex items-center gap-2 border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-colors"
+          className="pb-3 flex items-center gap-2 border-b-2 border-transparent text-slate-600 hover:text-slate-900 transition-colors"
         >
           <BookOpen className="w-4 h-4" />
           Exercise Library
