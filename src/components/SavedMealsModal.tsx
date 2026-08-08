@@ -19,16 +19,18 @@ interface SavedMealsModalProps {
   isOpen: boolean;
   onClose: () => void;
   savedMeals: SavedMeal[];
+  selectedDate?: string;
   onAddSavedMeal: (meal: Omit<SavedMeal, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   onDeleteSavedMeal: (id: string) => Promise<void>;
   onUpdateSavedMeal: (id: string, updatedFields: Partial<SavedMeal>) => Promise<void>;
-  onLogSavedMeal: (meal: SavedMeal) => Promise<void>;
+  onLogSavedMeal: (meal: SavedMeal, targetDate?: string) => Promise<void>;
 }
 
 export default function SavedMealsModal({
   isOpen,
   onClose,
   savedMeals,
+  selectedDate,
   onAddSavedMeal,
   onDeleteSavedMeal,
   onUpdateSavedMeal,
@@ -167,7 +169,7 @@ export default function SavedMealsModal({
 
   const handleLog = async (meal: SavedMeal) => {
     try {
-      await onLogSavedMeal(meal);
+      await onLogSavedMeal(meal, selectedDate);
       setLoggedMealIds(prev => [...prev, meal.id]);
       setTimeout(() => {
         setLoggedMealIds(prev => prev.filter(id => id !== meal.id));

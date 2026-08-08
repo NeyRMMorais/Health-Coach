@@ -7,6 +7,8 @@ interface FoodLogSectionProps {
   logs: FoodLog[];
   profile: UserProfile | null;
   savedMeals: SavedMeal[];
+  selectedDate?: string;
+  onDateChange?: (date: string) => void;
   onAddLog: (log: Omit<FoodLog, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   onDeleteLog: (id: string) => Promise<void>;
   onUpdateLog: (id: string, updatedFields: Partial<FoodLog>) => Promise<void>;
@@ -18,6 +20,8 @@ export default function FoodLogSection({
   logs,
   profile,
   savedMeals,
+  selectedDate: propSelectedDate,
+  onDateChange,
   onAddLog,
   onDeleteLog,
   onUpdateLog,
@@ -137,7 +141,12 @@ export default function FoodLogSection({
 
   // Filters
   const todayStr = new Date().toISOString().split('T')[0];
-  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
+  const [internalDate, setInternalDate] = useState<string>(todayStr);
+  const selectedDate = propSelectedDate || internalDate;
+  const setSelectedDate = (d: string) => {
+    setInternalDate(d);
+    onDateChange?.(d);
+  };
 
   const [activeTab, setActiveTab] = useState<'manual' | 'ai'>('manual');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);

@@ -52,6 +52,7 @@ export default function App() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [foodLogs, setFoodLogs] = useState<FoodLog[]>([]);
   const [savedMeals, setSavedMeals] = useState<SavedMeal[]>([]);
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
   const [isSavedMealsOpen, setIsSavedMealsOpen] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'tracker' | 'suggest' | 'analytics' | 'strength'>('tracker');
@@ -196,6 +197,38 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
       }
     );
 
+    // Sync guest saved meals locally stored into Firestore if present
+    const guestSavedStr = localStorage.getItem('guest_saved_meals');
+    if (guestSavedStr) {
+      try {
+        const guestSaved: SavedMeal[] = JSON.parse(guestSavedStr);
+        if (guestSaved.length > 0) {
+          guestSaved.forEach(async (m) => {
+            const mId = m.id.startsWith('guest_') ? doc(collection(db, `users/${user.uid}/savedMeals`)).id : m.id;
+            const payload: Record<string, any> = {
+              id: mId,
+              userId: user.uid,
+              name: m.name,
+              mealType: m.mealType,
+              calories: m.calories,
+              protein: m.protein,
+              carbs: m.carbs,
+              fats: m.fats,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            };
+            if (m.description && m.description.trim()) {
+              payload.description = m.description.trim();
+            }
+            await setDoc(doc(db, `users/${user.uid}/savedMeals`, mId), payload, { merge: true });
+          });
+          localStorage.removeItem('guest_saved_meals');
+        }
+      } catch (e) {
+        console.error('Failed to sync guest saved meals:', e);
+      }
+    }
+
     // 3. Saved Meals Snap Listener
     const savedMealsPath = `users/${user.uid}/savedMeals`;
     const unsubSavedMeals = onSnapshot(
@@ -213,6 +246,7 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
             protein: data.protein,
             carbs: data.carbs,
             fats: data.fats,
+            description: data.description || undefined,
             createdAt: data.createdAt,
             updatedAt: data.updatedAt,
           } as SavedMeal);
@@ -409,16 +443,25 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
     if (user) {
       const path = `users/${user.uid}/savedMeals/${mealId}`;
       try {
-        const firestoreMeal = {
+        const firestoreMeal: Record<string, any> = {
           id: mealId,
           userId: user.uid,
-          ...mealData,
+          name: mealData.name,
+          mealType: mealData.mealType,
+          calories: mealData.calories,
+          protein: mealData.protein,
+          carbs: mealData.carbs,
+          fats: mealData.fats,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         };
+        if (mealData.description && mealData.description.trim()) {
+          firestoreMeal.description = mealData.description.trim();
+        }
         await setDoc(doc(db, `users/${user.uid}/savedMeals`, mealId), firestoreMeal);
       } catch (err) {
-        console.error('Firestore save meal error (retained locally):', err);
+        console.error('Firestore save meal error:', err);
+        handleFirestoreError(err, OperationType.CREATE, path);
       }
     }
   };
@@ -438,6 +481,7 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
         await deleteDoc(doc(db, `users/${user.uid}/savedMeals`, mealId));
       } catch (err) {
         console.error('Firestore delete saved meal error:', err);
+        handleFirestoreError(err, OperationType.DELETE, path);
       }
     }
   };
@@ -454,19 +498,23 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
     if (user) {
       const path = `users/${user.uid}/savedMeals/${mealId}`;
       try {
-        const updatedMeal = {
+        const updatedMeal: Record<string, any> = {
           ...updatedFields,
           updatedAt: serverTimestamp(),
         };
+        if (updatedFields.description !== undefined && !updatedFields.description.trim()) {
+          delete updatedMeal.description;
+        }
         await setDoc(doc(db, `users/${user.uid}/savedMeals`, mealId), updatedMeal, { merge: true });
       } catch (err) {
         console.error('Firestore update saved meal error:', err);
+        handleFirestoreError(err, OperationType.UPDATE, path);
       }
     }
   };
 
-  const handleLogSavedMealToDiary = async (meal: SavedMeal) => {
-    const todayStr = new Date().toISOString().split('T')[0];
+  const handleLogSavedMealToDiary = async (meal: SavedMeal, targetDate?: string) => {
+    const dateToUse = targetDate || selectedDate || new Date().toISOString().split('T')[0];
     const now = new Date();
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     await handleAddLog({
@@ -476,7 +524,7 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
       protein: meal.protein,
       carbs: meal.carbs,
       fats: meal.fats,
-      date: todayStr,
+      date: dateToUse,
       time: timeStr,
     });
   };
@@ -854,6 +902,8 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
                   logs={foodLogs}
                   profile={profile}
                   savedMeals={savedMeals}
+                  selectedDate={selectedDate}
+                  onDateChange={setSelectedDate}
                   onAddLog={handleAddLog}
                   onDeleteLog={handleDeleteLog}
                   onUpdateLog={handleUpdateLog}
@@ -929,6 +979,7 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
         isOpen={isSavedMealsOpen}
         onClose={() => setIsSavedMealsOpen(false)}
         savedMeals={savedMeals}
+        selectedDate={selectedDate}
         onAddSavedMeal={handleAddSavedMeal}
         onDeleteSavedMeal={handleDeleteSavedMeal}
         onUpdateSavedMeal={handleUpdateSavedMeal}
