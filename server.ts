@@ -196,9 +196,221 @@ Provide clear, structured recipes. Make sure preparation times, calories, and ma
 
     const parsed = JSON.parse(resultText);
     res.json(parsed);
+// Fallback Offline Routine Parser
+function fallbackParseRoutine(text: string) {
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  let title = "AI Imported Routine";
+  let description = "Imported workout schedule parsed from custom text.";
+  const days: any[] = [];
+  let currentDay: any = null;
+
+  lines.forEach((line) => {
+    // Check for routine title line
+    if (line.toLowerCase().startsWith("title:") || line.toLowerCase().startsWith("routine:")) {
+      title = line.replace(/^(title|routine):/i, "").trim();
+      return;
+    }
+
+    // Check for Day headers (e.g., "Day 1:", "Day 2 - Push:", "Upper Body Day:")
+    const dayMatch = line.match(/^(day\s*\d+|day\s*[-:]|[A-Z][a-z0-9\s]+Day)[:\s-]*(.*)/i);
+    if (dayMatch) {
+      if (currentDay && currentDay.exercises.length > 0) {
+        days.push(currentDay);
+      }
+      const dayHeader = dayMatch[1].trim();
+      const restMatch = line.toLowerCase().includes("rest day") || line.toLowerCase().includes("off");
+      currentDay = {
+        id: `day_${Date.now()}_${days.length + 1}`,
+        dayNumber: days.length + 1,
+        dayName: dayMatch[2] ? `${dayHeader}: ${dayMatch[2].trim()}` : dayHeader,
+        type: restMatch ? "rest" : "workout",
+        exercises: [],
+      };
+      return;
+    }
+
+    // Check for Exercise lines (e.g. "Bench Press 4x8", "Barbell Squats - 3 sets x 10 reps", "Lat Pulldown 3x12")
+    if (currentDay && currentDay.type === "workout") {
+      const exMatch = line.match(/^(?:[-*•]\s*)?([A-Za-z0-9\s/()'-]+?)(?:\s*[:@,|-]\s*|\s+)(\d+)\s*(?:sets?|x)\s*(\d+)\s*(?:reps?)?/i);
+      if (exMatch) {
+        const exName = exMatch[1].replace(/^[0-9.]+\s*/, "").trim();
+        const sets = parseInt(exMatch[2], 10) || 3;
+        const reps = parseInt(exMatch[3], 10) || 10;
+        
+        let muscleGroup = "Full Body";
+        const lowerName = exName.toLowerCase();
+        if (lowerName.includes("bench") || lowerName.includes("chest") || lowerName.includes("fly") || lowerName.includes("dip")) muscleGroup = "Chest";
+        else if (lowerName.includes("row") || lowerName.includes("lat") || lowerName.includes("pull") || lowerName.includes("back")) muscleGroup = "Back";
+        else if (lowerName.includes("squat") || lowerName.includes("leg") || lowerName.includes("lunge") || lowerName.includes("calf") || lowerName.includes("deadlift")) muscleGroup = "Legs";
+        else if (lowerName.includes("press") || lowerName.includes("shoulder") || lowerName.includes("delt") || lowerName.includes("raise")) muscleGroup = "Shoulders";
+        else if (lowerName.includes("curl") || lowerName.includes("tricep") || lowerName.includes("bicep") || lowerName.includes("extension")) muscleGroup = "Arms";
+        else if (lowerName.includes("ab") || lowerName.includes("crunch") || lowerName.includes("plank") || lowerName.includes("core")) muscleGroup = "Core";
+
+        let category = "Barbell";
+        if (lowerName.includes("dumbbell") || lowerName.includes("db ")) category = "Dumbbell";
+        else if (lowerName.includes("cable") || lowerName.includes("rope")) category = "Cable";
+        else if (lowerName.includes("machine") || lowerName.includes("press machine") || lowerName.includes("leg extension")) category = "Machine";
+        else if (lowerName.includes("bodyweight") || lowerName.includes("pushup") || lowerName.includes("pullup")) category = "Bodyweight";
+
+        currentDay.exercises.push({
+          exerciseId: `ex_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          exerciseName: exName,
+          targetMuscleGroup: muscleGroup,
+          category,
+          targetSets: sets,
+          targetReps: reps,
+          targetRestSeconds: 90,
+        });
+      }
+    }
+  });
+
+  if (currentDay && currentDay.exercises.length > 0) {
+    days.push(currentDay);
+  }
+
+  if (days.length === 0) {
+    // Fallback single day if regex failed
+    days.push({
+      id: `day_${Date.now()}_1`,
+      dayNumber: 1,
+      dayName: "Day 1 - Custom Split",
+      type: "workout",
+      exercises: [
+        {
+          exerciseId: "ex_fallback_1",
+          exerciseName: "Bench Press",
+          targetMuscleGroup: "Chest",
+          category: "Barbell",
+          targetSets: 4,
+          targetReps: 8,
+          targetRestSeconds: 90,
+        },
+        {
+          exerciseId: "ex_fallback_2",
+          exerciseName: "Barbell Squats",
+          targetMuscleGroup: "Legs",
+          category: "Barbell",
+          targetSets: 4,
+          targetReps: 8,
+          targetRestSeconds: 120,
+        },
+      ],
+    });
+  }
+
+  return { title, description, days };
+}
+
+// AI Workout Architect Endpoint
+app.post("/api/gemini/parse-routine", async (req, res) => {
+  const { text } = req.body;
+
+  if (!text || typeof text !== "string" || !text.trim()) {
+    return res.status(400).json({ error: "Workout routine text is required." });
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey || apiKey === "your_api_key_here") {
+    console.warn("GEMINI_API_KEY missing. Using fallback regex routine parser.");
+    return res.json(fallbackParseRoutine(text));
+  }
+
+  try {
+    const ai = new GoogleGenAI({ apiKey });
+    const prompt = `You are a world-class strength & conditioning coach. Parse the following unstructured workout routine text into a structured multi-day training routine JSON object.
+
+Text to parse:
+"""
+${text}
+"""
+
+Rules:
+1. Extract a clear, catchy routine title and concise description.
+2. Parse all training days (e.g. Day 1 - Push, Day 2 - Pull, Day 3 - Rest Day).
+3. For each day, classify type as "workout", "rest", or "cardio".
+4. For workout days, extract all exercises with targetMuscleGroup ('Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Full Body'), category ('Barbell', 'Dumbbell', 'Machine', 'Cable', 'Bodyweight'), targetSets (number, default 3), targetReps (number, default 10), and targetRestSeconds (number, default 90).`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING, description: "Catchy title of the workout routine" },
+            description: { type: Type.STRING, description: "Brief description of the routine split" },
+            days: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  dayName: { type: Type.STRING, description: "Name of the day, e.g. Day 1 - Push" },
+                  type: { type: Type.STRING, enum: ["workout", "rest", "cardio"] },
+                  exercises: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        exerciseName: { type: Type.STRING },
+                        targetMuscleGroup: {
+                          type: Type.STRING,
+                          enum: ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core", "Full Body"],
+                        },
+                        category: {
+                          type: Type.STRING,
+                          enum: ["Barbell", "Dumbbell", "Machine", "Cable", "Bodyweight"],
+                        },
+                        targetSets: { type: Type.INTEGER },
+                        targetReps: { type: Type.INTEGER },
+                        targetRestSeconds: { type: Type.INTEGER },
+                      },
+                      required: ["exerciseName", "targetMuscleGroup", "category", "targetSets", "targetReps"],
+                    },
+                  },
+                },
+                required: ["dayName", "type"],
+              },
+            },
+          },
+          required: ["title", "description", "days"],
+        },
+      },
+    });
+
+    const resultText = response.text;
+    if (!resultText) {
+      throw new Error("No response text from Gemini API");
+    }
+
+    const parsed = JSON.parse(resultText);
+    
+    // Add missing IDs and index numbers
+    const processedDays = (parsed.days || []).map((day: any, idx: number) => ({
+      id: `day_${Date.now()}_${idx + 1}`,
+      dayNumber: idx + 1,
+      dayName: day.dayName || `Day ${idx + 1}`,
+      type: day.type || "workout",
+      exercises: (day.exercises || []).map((ex: any, exIdx: number) => ({
+        exerciseId: `ex_${Date.now()}_${idx}_${exIdx}`,
+        exerciseName: ex.exerciseName || "Exercise",
+        targetMuscleGroup: ex.targetMuscleGroup || "Full Body",
+        category: ex.category || "Barbell",
+        targetSets: Number(ex.targetSets) || 3,
+        targetReps: Number(ex.targetReps) || 10,
+        targetRestSeconds: Number(ex.targetRestSeconds) || 90,
+      })),
+    }));
+
+    res.json({
+      title: parsed.title || "AI Imported Routine",
+      description: parsed.description || "Imported workout schedule parsed with Gemini AI.",
+      days: processedDays,
+    });
   } catch (error) {
-    console.error("Error in /api/gemini/suggest-meals, falling back to local generator:", error);
-    res.json(fallbackSuggestMeals(goal, mealType));
+    console.error("Error in /api/gemini/parse-routine, falling back to regex parser:", error);
+    res.json(fallbackParseRoutine(text));
   }
 });
 

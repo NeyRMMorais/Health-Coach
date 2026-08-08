@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Play, Plus, Dumbbell, Trash2, Edit, Check, ChevronRight, X, Calendar, HeartPulse, Flame, Sun, Layers } from 'lucide-react';
+import { Play, Plus, Dumbbell, Trash2, Edit, Check, ChevronRight, X, Calendar, HeartPulse, Flame, Sun, Layers, Sparkles } from 'lucide-react';
 import { WorkoutRoutine, RoutineDay, RoutineDayType, WorkoutExercise, Exercise, TargetMuscleGroup } from '../types';
 import { DEFAULT_ROUTINES } from '../data/defaultRoutines';
 import { ExerciseLibraryModal } from './ExerciseLibraryModal';
+
+import { AiWorkoutArchitectModal } from './AiWorkoutArchitectModal';
 
 interface RoutineManagerProps {
   onStartWorkoutFromRoutine: (routineName: string, exercises: WorkoutExercise[]) => void;
@@ -45,13 +47,33 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
     return combined.filter((r) => !deletedIds.includes(r.id));
   });
 
-  // Routine Creation State
+  // Routine Creation & AI Architect State
   const [isCreating, setIsCreating] = useState(false);
+  const [isAiArchitectOpen, setIsAiArchitectOpen] = useState(false);
   const [routineTitle, setRoutineTitle] = useState('');
   const [routineDesc, setRoutineDesc] = useState('');
   const [days, setDays] = useState<RoutineDay[]>([
     { id: `day-${Date.now()}-1`, dayNumber: 1, dayName: 'D1 - Workout Session', type: 'workout', exercises: [] },
   ]);
+
+  const handleAiRoutineSave = (newRoutine: WorkoutRoutine) => {
+    setRoutines((prev) => [newRoutine, ...prev]);
+
+    // Save to localStorage
+    const savedCustom = localStorage.getItem('custom_routines');
+    let customRoutines: WorkoutRoutine[] = [];
+    if (savedCustom) {
+      try {
+        customRoutines = JSON.parse(savedCustom);
+      } catch (e) {
+        customRoutines = [];
+      }
+    }
+    customRoutines.unshift(newRoutine);
+    localStorage.setItem('custom_routines', JSON.stringify(customRoutines));
+  };
+
+  // Track which day is currently being edited in the modal
 
   // Track which day is currently being edited in the modal
   const [activeEditingDayIndex, setActiveEditingDayIndex] = useState<number>(0);
@@ -183,20 +205,30 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
   return (
     <div className="space-y-6">
       {/* Header Bar */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-slate-900">Workout Routines & Multi-Day Schedules</h2>
           <p className="text-xs text-slate-500 font-medium">
-            Build and manage multi-day training splits (workouts, cardio sessions & rest days)
+            Build, import with AI, and manage multi-day training splits (workouts, cardio sessions & rest days)
           </p>
         </div>
-        <button
-          onClick={() => setIsCreating(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold shadow-lg shadow-emerald-500/20 transition-all"
-        >
-          <Plus className="w-4 h-4" />
-          Create Schedule
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsAiArchitectOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 text-xs font-black shadow-lg shadow-cyan-500/20 transition-all"
+          >
+            <Sparkles className="w-4 h-4 fill-slate-950" />
+            Import with AI ✨
+          </button>
+
+          <button
+            onClick={() => setIsCreating(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold shadow-lg shadow-emerald-500/20 transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            Create Schedule
+          </button>
+        </div>
       </div>
 
       {/* Routine Creation Form */}
@@ -608,6 +640,13 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
         isOpen={isLibraryOpen}
         onClose={() => setIsLibraryOpen(false)}
         onSelectExercise={handleAddExerciseToCurrentDay}
+      />
+
+      {/* AI Workout Architect Routine Import Modal */}
+      <AiWorkoutArchitectModal
+        isOpen={isAiArchitectOpen}
+        onClose={() => setIsAiArchitectOpen(false)}
+        onSaveRoutine={handleAiRoutineSave}
       />
     </div>
   );
