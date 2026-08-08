@@ -129,6 +129,7 @@ service cloud.firestore {
              (data.fats is int || data.fats is float) &&
              data.fats >= 0 &&
              data.fats <= 500 &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 2000)) &&
              data.createdAt is timestamp &&
              data.updatedAt is timestamp;
     }
@@ -198,7 +199,7 @@ service cloud.firestore {
                           incoming().id == mealId &&
                           incoming().userId == request.auth.uid &&
                           incoming().keys().hasAll(['id', 'userId', 'name', 'mealType', 'calories', 'protein', 'carbs', 'fats', 'createdAt', 'updatedAt']) &&
-                          incoming().keys().size() == 10 &&
+                          (incoming().keys().size() == 10 || (incoming().keys().size() == 11 && 'description' in incoming())) &&
                           incoming().createdAt == request.time &&
                           incoming().updatedAt == request.time &&
                           isValidSavedMeal(incoming());
@@ -212,7 +213,7 @@ service cloud.firestore {
                           incoming().id == existing().id &&
                           incoming().userId == existing().userId &&
                           isValidSavedMeal(incoming()) &&
-                          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'mealType', 'calories', 'protein', 'carbs', 'fats', 'updatedAt']);
+                          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'mealType', 'calories', 'protein', 'carbs', 'fats', 'description', 'updatedAt']);
 
         allow delete: if isSignedIn() && request.auth.uid == userId;
       }
