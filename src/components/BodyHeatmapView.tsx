@@ -260,199 +260,214 @@ export const BodyHeatmapView: React.FC<BodyHeatmapViewProps> = ({ workoutLogs })
           </div>
 
           {/* High-Fidelity Anatomical SVG Body Illustration */}
-          <div className="w-full max-w-sm h-[420px] my-4 flex items-center justify-center relative">
-            <svg viewBox="0 0 300 600" className="w-full h-full">
-              {/* Outer Body Outline / Shadow Silhouette */}
-              <path
-                d="M150 25 C165 25 175 40 175 62 C175 75 190 90 215 95 C238 100 250 130 242 180 C235 225 228 270 225 310 C222 350 210 420 195 540 C182 550 165 550 158 540 C158 430 154 340 150 340 C146 340 142 430 142 540 C135 550 118 550 105 540 C90 420 78 350 75 310 C72 270 65 225 58 180 C50 130 62 100 85 95 C110 90 125 75 125 62 C125 40 135 25 150 25 Z"
-                fill="#090d16"
-                stroke="#1e293b"
-                strokeWidth="3"
-              />
+          <div className="w-full max-w-sm h-[440px] my-2 flex items-center justify-center relative">
+            <svg viewBox="0 0 300 600" className="w-full h-full filter drop-shadow-xl">
+              {/* Outer Anatomical Body Silhouette Base */}
+              <g opacity="0.25" fill="#090d16" stroke="#334155" strokeWidth="1.5">
+                <path d="M 150 22 C 163 22 172 32 172 48 C 172 62 163 70 158 72 C 166 75 178 82 190 90 C 218 100 238 120 240 148 C 242 175 230 215 228 250 C 226 280 232 300 234 320 C 236 335 230 350 224 355 C 220 340 214 310 208 290 C 204 310 200 360 196 420 C 192 480 186 525 180 545 C 175 560 165 565 158 565 C 153 565 150 550 150 420 C 150 550 147 565 142 565 C 135 565 125 560 120 545 C 114 525 108 480 104 420 C 100 360 96 310 92 290 C 86 310 80 340 76 355 C 70 350 64 335 66 320 C 68 300 74 280 72 250 C 70 215 58 175 60 148 C 62 120 82 100 110 90 C 122 82 134 75 142 72 C 137 70 128 62 128 48 C 128 32 137 22 150 22 Z" />
+              </g>
 
               {viewMode === 'front' ? (
                 <>
                   {/* FRONT: Upper Chest */}
-                  <path
-                    d="M108 120 C125 112 150 116 150 145 C125 145 108 138 108 120 Z M192 120 C175 112 150 116 150 145 C175 145 192 138 192 120 Z"
-                    fill={getMuscleFill('ChestUpper')}
-                    stroke="#020617"
-                    strokeWidth="2"
-                    className={`cursor-pointer transition-all hover:opacity-90 ${getMuscleGlowClass('ChestUpper')}`}
-                    onClick={() => setSelectedKey('ChestUpper')}
-                  />
+                  <g className="cursor-pointer group" onClick={() => setSelectedKey('ChestUpper')}>
+                    <path
+                      d="M 150 108 C 136 108 124 112 114 122 C 116 132 128 138 150 138 Z M 150 108 C 164 108 176 112 186 122 C 184 132 172 138 150 138 Z"
+                      fill={getMuscleFill('ChestUpper')}
+                      stroke="#020617"
+                      strokeWidth="1.5"
+                      className={`transition-all duration-300 group-hover:opacity-90 ${getMuscleGlowClass('ChestUpper')}`}
+                    />
+                  </g>
 
                   {/* FRONT: Lower Chest */}
-                  <path
-                    d="M108 142 C125 142 150 147 150 170 C125 170 108 162 108 142 Z M192 142 C175 142 150 147 150 170 C175 170 192 162 192 142 Z"
-                    fill={getMuscleFill('ChestLower')}
-                    stroke="#020617"
-                    strokeWidth="2"
-                    className={`cursor-pointer transition-all hover:opacity-90 ${getMuscleGlowClass('ChestLower')}`}
-                    onClick={() => setSelectedKey('ChestLower')}
-                  />
+                  <g className="cursor-pointer group" onClick={() => setSelectedKey('ChestLower')}>
+                    <path
+                      d="M 114 124 C 126 139 138 144 150 144 L 150 166 C 138 166 120 160 112 144 C 108 136 110 128 114 124 Z M 186 124 C 174 139 162 144 150 144 L 150 166 C 162 166 180 160 188 144 C 192 136 190 128 186 124 Z"
+                      fill={getMuscleFill('ChestLower')}
+                      stroke="#020617"
+                      strokeWidth="1.5"
+                      className={`transition-all duration-300 group-hover:opacity-90 ${getMuscleGlowClass('ChestLower')}`}
+                    />
+                  </g>
 
                   {/* FRONT: Front Delts */}
-                  <path
-                    d="M82 110 C98 105 108 120 102 148 C84 140 76 126 82 110 Z M218 110 C202 105 192 120 198 148 C216 140 224 126 218 110 Z"
-                    fill={getMuscleFill('FrontDelts')}
-                    stroke="#020617"
-                    strokeWidth="2"
-                    className={`cursor-pointer transition-all hover:opacity-90 ${getMuscleGlowClass('FrontDelts')}`}
-                    onClick={() => setSelectedKey('FrontDelts')}
-                  />
+                  <g className="cursor-pointer group" onClick={() => setSelectedKey('FrontDelts')}>
+                    <path
+                      d="M 108 100 C 114 96 122 92 128 90 C 122 102 114 118 112 128 C 102 124 92 118 94 108 C 96 102 102 100 108 100 Z M 192 100 C 186 96 178 92 172 90 C 178 102 186 118 188 128 C 198 124 208 118 206 108 C 204 102 198 100 192 100 Z"
+                      fill={getMuscleFill('FrontDelts')}
+                      stroke="#020617"
+                      strokeWidth="1.5"
+                      className={`transition-all duration-300 group-hover:opacity-90 ${getMuscleGlowClass('FrontDelts')}`}
+                    />
+                  </g>
 
                   {/* FRONT: Side Delts */}
-                  <path
-                    d="M72 118 C80 115 84 135 78 152 C68 145 65 132 72 118 Z M228 118 C220 115 216 135 222 152 C232 145 235 132 228 118 Z"
-                    fill={getMuscleFill('SideDelts')}
-                    stroke="#020617"
-                    strokeWidth="2"
-                    className={`cursor-pointer transition-all hover:opacity-90 ${getMuscleGlowClass('SideDelts')}`}
-                    onClick={() => setSelectedKey('SideDelts')}
-                  />
+                  <g className="cursor-pointer group" onClick={() => setSelectedKey('SideDelts')}>
+                    <path
+                      d="M 92 106 C 90 116 100 124 108 132 C 102 144 96 150 90 148 C 82 142 78 130 82 118 C 84 112 88 108 92 106 Z M 208 106 C 210 116 200 124 192 132 C 198 144 204 150 210 148 C 218 142 222 130 218 118 C 216 112 212 108 208 106 Z"
+                      fill={getMuscleFill('SideDelts')}
+                      stroke="#020617"
+                      strokeWidth="1.5"
+                      className={`transition-all duration-300 group-hover:opacity-90 ${getMuscleGlowClass('SideDelts')}`}
+                    />
+                  </g>
 
                   {/* FRONT: Biceps */}
-                  <path
-                    d="M70 155 C85 155 88 190 76 220 C66 205 62 178 70 155 Z M230 155 C215 155 212 190 224 220 C234 205 238 178 230 155 Z"
-                    fill={getMuscleFill('Biceps')}
-                    stroke="#020617"
-                    strokeWidth="2"
-                    className={`cursor-pointer transition-all hover:opacity-90 ${getMuscleGlowClass('Biceps')}`}
-                    onClick={() => setSelectedKey('Biceps')}
-                  />
+                  <g className="cursor-pointer group" onClick={() => setSelectedKey('Biceps')}>
+                    <path
+                      d="M 88 150 C 96 148 106 148 108 160 C 110 180 102 205 92 215 C 84 210 78 190 80 170 C 82 158 84 152 88 150 Z M 212 150 C 204 148 194 148 192 160 C 190 180 198 205 208 215 C 216 210 222 190 220 170 C 218 158 216 152 212 150 Z"
+                      fill={getMuscleFill('Biceps')}
+                      stroke="#020617"
+                      strokeWidth="1.5"
+                      className={`transition-all duration-300 group-hover:opacity-90 ${getMuscleGlowClass('Biceps')}`}
+                    />
+                  </g>
 
                   {/* FRONT: Forearms */}
-                  <path
-                    d="M66 225 C76 225 78 265 68 295 C58 285 56 250 66 225 Z M234 225 C224 225 222 265 232 295 C242 285 244 250 234 225 Z"
-                    fill={getMuscleFill('Forearms')}
-                    stroke="#020617"
-                    strokeWidth="2"
-                    className={`cursor-pointer transition-all hover:opacity-90 ${getMuscleGlowClass('Forearms')}`}
-                    onClick={() => setSelectedKey('Forearms')}
-                  />
+                  <g className="cursor-pointer group" onClick={() => setSelectedKey('Forearms')}>
+                    <path
+                      d="M 88 218 C 96 218 100 235 96 260 C 92 280 84 298 76 308 C 68 300 66 275 70 250 C 74 235 80 222 88 218 Z M 212 218 C 204 218 200 235 204 260 C 208 280 216 298 224 308 C 232 300 234 275 230 250 C 226 235 220 222 212 218 Z"
+                      fill={getMuscleFill('Forearms')}
+                      stroke="#020617"
+                      strokeWidth="1.5"
+                      className={`transition-all duration-300 group-hover:opacity-90 ${getMuscleGlowClass('Forearms')}`}
+                    />
+                  </g>
 
-                  {/* FRONT: Abs */}
-                  <path
-                    d="M118 175 L182 175 L176 270 L124 270 Z"
-                    fill={getMuscleFill('Abs')}
-                    stroke="#020617"
-                    strokeWidth="2"
-                    className={`cursor-pointer transition-all hover:opacity-90 ${getMuscleGlowClass('Abs')}`}
-                    onClick={() => setSelectedKey('Abs')}
-                  />
+                  {/* FRONT: Abs (Segmented 6-Pack) */}
+                  <g className="cursor-pointer group" onClick={() => setSelectedKey('Abs')}>
+                    <path
+                      d="M 124 172 C 136 170 164 170 176 172 L 174 200 C 162 202 138 202 126 200 Z M 126 204 C 138 206 162 206 174 204 L 172 232 C 160 234 140 234 128 232 Z M 128 236 C 140 238 160 238 172 236 L 168 268 C 158 274 142 274 132 268 Z"
+                      fill={getMuscleFill('Abs')}
+                      stroke="#020617"
+                      strokeWidth="1.5"
+                      className={`transition-all duration-300 group-hover:opacity-90 ${getMuscleGlowClass('Abs')}`}
+                    />
+                  </g>
 
                   {/* FRONT: Obliques */}
-                  <path
-                    d="M102 175 L116 175 L122 265 L108 265 Z M198 175 L184 175 L178 265 L192 265 Z"
-                    fill={getMuscleFill('Obliques')}
-                    stroke="#020617"
-                    strokeWidth="2"
-                    className={`cursor-pointer transition-all hover:opacity-90 ${getMuscleGlowClass('Obliques')}`}
-                    onClick={() => setSelectedKey('Obliques')}
-                  />
+                  <g className="cursor-pointer group" onClick={() => setSelectedKey('Obliques')}>
+                    <path
+                      d="M 108 170 C 116 170 122 174 122 200 L 124 264 C 114 260 106 240 104 215 C 102 195 104 180 108 170 Z M 192 170 C 184 170 178 174 178 200 L 176 264 C 186 260 194 240 196 215 C 198 195 196 180 192 170 Z"
+                      fill={getMuscleFill('Obliques')}
+                      stroke="#020617"
+                      strokeWidth="1.5"
+                      className={`transition-all duration-300 group-hover:opacity-90 ${getMuscleGlowClass('Obliques')}`}
+                    />
+                  </g>
 
                   {/* FRONT: Quads */}
-                  <path
-                    d="M92 290 L142 290 L138 415 L102 415 Z M208 290 L158 290 L162 415 L198 415 Z"
-                    fill={getMuscleFill('Quads')}
-                    stroke="#020617"
-                    strokeWidth="2"
-                    className={`cursor-pointer transition-all hover:opacity-90 ${getMuscleGlowClass('Quads')}`}
-                    onClick={() => setSelectedKey('Quads')}
-                  />
+                  <g className="cursor-pointer group" onClick={() => setSelectedKey('Quads')}>
+                    <path
+                      d="M 104 280 C 122 276 142 282 146 295 C 148 335 144 380 140 412 C 128 418 114 416 104 402 C 94 380 92 330 96 300 C 98 290 100 284 104 280 Z M 196 280 C 178 276 158 282 154 295 C 152 335 156 380 160 412 C 172 418 186 416 196 402 C 206 380 208 330 204 300 C 202 290 200 284 196 280 Z"
+                      fill={getMuscleFill('Quads')}
+                      stroke="#020617"
+                      strokeWidth="1.5"
+                      className={`transition-all duration-300 group-hover:opacity-90 ${getMuscleGlowClass('Quads')}`}
+                    />
+                  </g>
 
                   {/* FRONT: Calves */}
-                  <path
-                    d="M105 435 L135 435 L128 530 L112 530 Z M195 435 L165 435 L172 530 L188 530 Z"
-                    fill={getMuscleFill('Calves')}
-                    stroke="#020617"
-                    strokeWidth="2"
-                    className={`cursor-pointer transition-all hover:opacity-90 ${getMuscleGlowClass('Calves')}`}
-                    onClick={() => setSelectedKey('Calves')}
-                  />
+                  <g className="cursor-pointer group" onClick={() => setSelectedKey('Calves')}>
+                    <path
+                      d="M 108 430 C 122 426 134 430 136 445 C 138 470 132 505 126 532 C 118 534 112 530 110 515 C 106 490 102 460 104 442 C 105 435 106 432 108 430 Z M 192 430 C 178 426 166 430 164 445 C 162 470 168 505 174 532 C 182 534 188 530 190 515 C 194 490 198 460 196 442 C 195 435 194 432 192 430 Z"
+                      fill={getMuscleFill('Calves')}
+                      stroke="#020617"
+                      strokeWidth="1.5"
+                      className={`transition-all duration-300 group-hover:opacity-90 ${getMuscleGlowClass('Calves')}`}
+                    />
+                  </g>
                 </>
               ) : (
                 <>
                   {/* BACK: Traps */}
-                  <path
-                    d="M120 70 L180 70 L195 110 L105 110 Z"
-                    fill={getMuscleFill('Traps')}
-                    stroke="#020617"
-                    strokeWidth="2"
-                    className={`cursor-pointer transition-all hover:opacity-90 ${getMuscleGlowClass('Traps')}`}
-                    onClick={() => setSelectedKey('Traps')}
-                  />
+                  <g className="cursor-pointer group" onClick={() => setSelectedKey('Traps')}>
+                    <path
+                      d="M 150 72 C 160 76 172 84 184 92 C 170 104 158 124 150 148 C 142 124 130 104 116 92 C 128 84 140 76 150 72 Z"
+                      fill={getMuscleFill('Traps')}
+                      stroke="#020617"
+                      strokeWidth="1.5"
+                      className={`transition-all duration-300 group-hover:opacity-90 ${getMuscleGlowClass('Traps')}`}
+                    />
+                  </g>
 
                   {/* BACK: Rear Delts */}
-                  <path
-                    d="M82 110 C98 105 108 120 102 148 C84 140 76 126 82 110 Z M218 110 C202 105 192 120 198 148 C216 140 224 126 218 110 Z"
-                    fill={getMuscleFill('RearDelts')}
-                    stroke="#020617"
-                    strokeWidth="2"
-                    className={`cursor-pointer transition-all hover:opacity-90 ${getMuscleGlowClass('RearDelts')}`}
-                    onClick={() => setSelectedKey('RearDelts')}
-                  />
+                  <g className="cursor-pointer group" onClick={() => setSelectedKey('RearDelts')}>
+                    <path
+                      d="M 112 94 C 104 98 94 104 90 112 C 86 124 90 134 98 138 C 106 132 112 122 116 110 C 116 102 114 96 112 94 Z M 188 94 C 196 98 206 104 210 112 C 214 124 210 134 202 138 C 194 132 188 122 184 110 C 184 102 186 96 188 94 Z"
+                      fill={getMuscleFill('RearDelts')}
+                      stroke="#020617"
+                      strokeWidth="1.5"
+                      className={`transition-all duration-300 group-hover:opacity-90 ${getMuscleGlowClass('RearDelts')}`}
+                    />
+                  </g>
 
                   {/* BACK: Lats */}
-                  <path
-                    d="M108 115 C128 112 150 120 150 210 L112 215 Z M192 115 C172 112 150 120 150 210 L188 215 Z"
-                    fill={getMuscleFill('Lats')}
-                    stroke="#020617"
-                    strokeWidth="2"
-                    className={`cursor-pointer transition-all hover:opacity-90 ${getMuscleGlowClass('Lats')}`}
-                    onClick={() => setSelectedKey('Lats')}
-                  />
+                  <g className="cursor-pointer group" onClick={() => setSelectedKey('Lats')}>
+                    <path
+                      d="M 118 114 C 132 124 142 140 146 160 L 146 210 C 136 214 122 210 114 195 C 104 175 100 148 104 130 C 108 120 112 116 118 114 Z M 182 114 C 168 124 158 140 154 160 L 154 210 C 164 214 178 210 186 195 C 196 175 200 148 196 130 C 192 120 188 116 182 114 Z"
+                      fill={getMuscleFill('Lats')}
+                      stroke="#020617"
+                      strokeWidth="1.5"
+                      className={`transition-all duration-300 group-hover:opacity-90 ${getMuscleGlowClass('Lats')}`}
+                    />
+                  </g>
 
                   {/* BACK: Triceps */}
-                  <path
-                    d="M70 155 C85 155 88 190 76 220 C66 205 62 178 70 155 Z M230 155 C215 155 212 190 224 220 C234 205 238 178 230 155 Z"
-                    fill={getMuscleFill('Triceps')}
-                    stroke="#020617"
-                    strokeWidth="2"
-                    className={`cursor-pointer transition-all hover:opacity-90 ${getMuscleGlowClass('Triceps')}`}
-                    onClick={() => setSelectedKey('Triceps')}
-                  />
+                  <g className="cursor-pointer group" onClick={() => setSelectedKey('Triceps')}>
+                    <path
+                      d="M 88 145 C 96 142 104 145 106 155 C 108 175 102 200 94 215 C 84 210 78 188 80 168 C 82 155 84 148 88 145 Z M 212 145 C 204 142 196 145 194 155 C 192 175 198 200 206 215 C 216 210 222 188 220 168 C 218 155 216 148 212 145 Z"
+                      fill={getMuscleFill('Triceps')}
+                      stroke="#020617"
+                      strokeWidth="1.5"
+                      className={`transition-all duration-300 group-hover:opacity-90 ${getMuscleGlowClass('Triceps')}`}
+                    />
+                  </g>
 
                   {/* BACK: Lower Back */}
-                  <path
-                    d="M120 215 L180 215 L174 265 L126 265 Z"
-                    fill={getMuscleFill('LowerBack')}
-                    stroke="#020617"
-                    strokeWidth="2"
-                    className={`cursor-pointer transition-all hover:opacity-90 ${getMuscleGlowClass('LowerBack')}`}
-                    onClick={() => setSelectedKey('LowerBack')}
-                  />
+                  <g className="cursor-pointer group" onClick={() => setSelectedKey('LowerBack')}>
+                    <path
+                      d="M 126 212 C 140 210 160 210 174 212 L 172 262 C 160 266 140 266 128 262 Z"
+                      fill={getMuscleFill('LowerBack')}
+                      stroke="#020617"
+                      strokeWidth="1.5"
+                      className={`transition-all duration-300 group-hover:opacity-90 ${getMuscleGlowClass('LowerBack')}`}
+                    />
+                  </g>
 
                   {/* BACK: Glutes */}
-                  <path
-                    d="M95 270 L205 270 L198 340 L102 340 Z"
-                    fill={getMuscleFill('Glutes')}
-                    stroke="#020617"
-                    strokeWidth="2"
-                    className={`cursor-pointer transition-all hover:opacity-90 ${getMuscleGlowClass('Glutes')}`}
-                    onClick={() => setSelectedKey('Glutes')}
-                  />
+                  <g className="cursor-pointer group" onClick={() => setSelectedKey('Glutes')}>
+                    <path
+                      d="M 100 266 C 114 262 136 264 148 272 C 148 295 144 322 138 335 C 122 342 106 338 98 322 C 92 305 94 280 100 266 Z M 200 266 C 186 262 164 264 152 272 C 152 295 156 322 162 335 C 178 342 194 338 202 322 C 208 305 206 280 200 266 Z"
+                      fill={getMuscleFill('Glutes')}
+                      stroke="#020617"
+                      strokeWidth="1.5"
+                      className={`transition-all duration-300 group-hover:opacity-90 ${getMuscleGlowClass('Glutes')}`}
+                    />
+                  </g>
 
                   {/* BACK: Hamstrings */}
-                  <path
-                    d="M95 345 L142 345 L136 425 L102 425 Z M205 345 L158 345 L164 425 L198 425 Z"
-                    fill={getMuscleFill('Hamstrings')}
-                    stroke="#020617"
-                    strokeWidth="2"
-                    className={`cursor-pointer transition-all hover:opacity-90 ${getMuscleGlowClass('Hamstrings')}`}
-                    onClick={() => setSelectedKey('Hamstrings')}
-                  />
+                  <g className="cursor-pointer group" onClick={() => setSelectedKey('Hamstrings')}>
+                    <path
+                      d="M 102 340 C 120 338 138 342 144 352 C 146 375 142 405 138 420 C 126 424 114 422 104 410 C 96 392 96 362 102 340 Z M 198 340 C 180 338 162 342 156 352 C 154 375 158 405 162 420 C 174 424 186 422 196 410 C 204 392 204 362 198 340 Z"
+                      fill={getMuscleFill('Hamstrings')}
+                      stroke="#020617"
+                      strokeWidth="1.5"
+                      className={`transition-all duration-300 group-hover:opacity-90 ${getMuscleGlowClass('Hamstrings')}`}
+                    />
+                  </g>
 
                   {/* BACK: Calves */}
-                  <path
-                    d="M105 435 L135 435 L128 530 L112 530 Z M195 435 L165 435 L172 530 L188 530 Z"
-                    fill={getMuscleFill('Calves')}
-                    stroke="#020617"
-                    strokeWidth="2"
-                    className={`cursor-pointer transition-all hover:opacity-90 ${getMuscleGlowClass('Calves')}`}
-                    onClick={() => setSelectedKey('Calves')}
-                  />
+                  <g className="cursor-pointer group" onClick={() => setSelectedKey('Calves')}>
+                    <path
+                      d="M 108 430 C 122 426 134 430 136 445 C 138 470 132 505 126 532 C 118 534 112 530 110 515 C 106 490 102 460 104 442 C 105 435 106 432 108 430 Z M 192 430 C 178 426 166 430 164 445 C 162 470 168 505 174 532 C 182 534 188 530 190 515 C 194 490 198 460 196 442 C 195 435 194 432 192 430 Z"
+                      fill={getMuscleFill('Calves')}
+                      stroke="#020617"
+                      strokeWidth="1.5"
+                      className={`transition-all duration-300 group-hover:opacity-90 ${getMuscleGlowClass('Calves')}`}
+                    />
+                  </g>
                 </>
               )}
             </svg>
