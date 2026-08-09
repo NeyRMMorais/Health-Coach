@@ -196,6 +196,12 @@ Provide clear, structured recipes. Make sure preparation times, calories, and ma
 
     const parsed = JSON.parse(resultText);
     res.json(parsed);
+  } catch (error) {
+    console.error("Error in /api/gemini/suggest-meals, falling back to local generator:", error);
+    res.json(fallbackSuggestMeals(goal, mealType));
+  }
+});
+
 // Fallback Offline Routine Parser
 function fallbackParseRoutine(text: string) {
   const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
