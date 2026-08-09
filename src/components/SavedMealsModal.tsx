@@ -180,34 +180,34 @@ export default function SavedMealsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-sm overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white w-full max-w-2xl rounded-2xl border border-slate-100 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+        className="bg-white w-full max-w-2xl rounded-3xl border border-slate-100 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] my-auto"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-2">
-            <div className="bg-amber-100 p-2 rounded-xl text-amber-700">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+          <div className="flex items-center gap-2.5">
+            <div className="bg-amber-100 p-2 rounded-xl text-amber-700 shrink-0">
               <Bookmark className="h-5 w-5 fill-amber-500 text-amber-600" />
             </div>
             <div>
-              <h2 className="text-lg font-extrabold text-slate-800 tracking-tight">Saved Meal Ideas</h2>
-              <p className="text-xs text-slate-400">Quickly re-log your staple meals & favorite wholesome recipes</p>
+              <h2 className="text-base sm:text-lg font-extrabold text-slate-800 tracking-tight">Saved Meal Ideas</h2>
+              <p className="text-[11px] sm:text-xs text-slate-400">Quickly re-log your staple meals & favorite wholesome recipes</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition shrink-0"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Controls Bar: Search + Category Filter + Add New toggle */}
-        <div className="p-4 border-b border-slate-100 bg-white space-y-3">
+        <div className="p-3.5 sm:p-4 border-b border-slate-100 bg-white space-y-3">
           <div className="flex flex-col sm:flex-row gap-2">
             {/* Search Input */}
             <div className="relative flex-1">
@@ -223,7 +223,7 @@ export default function SavedMealsModal({
             {/* Add New Button */}
             <button
               onClick={() => setIsAddingNew(!isAddingNew)}
-              className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition shrink-0 shadow-sm"
+              className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition shrink-0 shadow-xs"
             >
               <Plus className="h-3.5 w-3.5" />
               {isAddingNew ? 'Close Form' : 'Create Saved Meal'}
@@ -231,14 +231,14 @@ export default function SavedMealsModal({
           </div>
 
           {/* Category Filter Pills */}
-          <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
             {['All', 'Breakfast', 'Lunch', 'Dinner', 'Snack'].map(cat => (
               <button
                 key={cat}
                 onClick={() => setCategoryFilter(cat)}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold transition shrink-0 ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 ${
                   categoryFilter === cat
-                    ? 'bg-emerald-600 text-white shadow-sm'
+                    ? 'bg-emerald-600 text-white shadow-xs'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
@@ -248,44 +248,48 @@ export default function SavedMealsModal({
           </div>
         </div>
 
-        {/* Collapsible Add New Form */}
+        {/* Inline Create Form */}
         <AnimatePresence>
           {isAddingNew && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="border-b border-slate-100 bg-slate-50/80 px-6 py-4 space-y-3"
+              className="border-b border-slate-100 bg-slate-50/80 p-4 sm:p-6 overflow-hidden"
             >
-              <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Create Meal Template
-              </h3>
-
-              {formError && (
-                <div className="p-2 text-xs text-rose-600 bg-rose-50 border border-rose-100 rounded-lg flex items-center gap-1.5">
-                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                  <span>{formError}</span>
-                </div>
-              )}
-
               <form onSubmit={handleCreateSubmit} className="space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                    New Saved Meal Template
+                  </h3>
+                  <span className="text-[10px] text-slate-400">Save for 1-click daily logging</span>
+                </div>
+
+                {formError && (
+                  <div className="p-2.5 bg-rose-50 border border-rose-100 text-rose-600 rounded-xl text-xs flex items-center gap-1.5">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>{formError}</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div className="sm:col-span-2">
                     <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Meal Name</label>
                     <input
                       type="text"
                       value={newName}
                       onChange={e => setNewName(e.target.value)}
-                      placeholder="E.g., Whey Protein Oatmeal"
-                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                      placeholder="E.g., Protein Oatmeal & Berries"
+                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-800 font-semibold"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Meal Category</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Meal Type</label>
                     <select
                       value={newMealType}
                       onChange={e => setNewMealType(e.target.value as any)}
-                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-800 font-semibold"
                     >
                       <option value="Breakfast">Breakfast</option>
                       <option value="Lunch">Lunch</option>
@@ -297,12 +301,12 @@ export default function SavedMealsModal({
 
                 <div className="grid grid-cols-4 gap-2">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1 text-center">Calories</label>
+                    <label className="block text-[10px] font-bold text-emerald-600 uppercase mb-1 text-center">Calories</label>
                     <input
                       type="number"
                       value={newCalories}
                       onChange={e => setNewCalories(e.target.value)}
-                      placeholder="400"
+                      placeholder="450"
                       className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-center focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                     />
                   </div>
@@ -312,7 +316,7 @@ export default function SavedMealsModal({
                       type="number"
                       value={newProtein}
                       onChange={e => setNewProtein(e.target.value)}
-                      placeholder="30"
+                      placeholder="35"
                       className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-center focus:ring-2 focus:ring-rose-500 focus:outline-none"
                     />
                   </div>
@@ -322,7 +326,7 @@ export default function SavedMealsModal({
                       type="number"
                       value={newCarbs}
                       onChange={e => setNewCarbs(e.target.value)}
-                      placeholder="45"
+                      placeholder="50"
                       className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-center focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                     />
                   </div>
@@ -332,7 +336,7 @@ export default function SavedMealsModal({
                       type="number"
                       value={newFats}
                       onChange={e => setNewFats(e.target.value)}
-                      placeholder="10"
+                      placeholder="12"
                       className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-center focus:ring-2 focus:ring-amber-500 focus:outline-none"
                     />
                   </div>
@@ -353,7 +357,7 @@ export default function SavedMealsModal({
                   <button
                     type="button"
                     onClick={() => setIsAddingNew(false)}
-                    className="px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-200 rounded-lg transition"
+                    className="px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-200 rounded-lg transition font-semibold"
                   >
                     Cancel
                   </button>
@@ -371,7 +375,7 @@ export default function SavedMealsModal({
         </AnimatePresence>
 
         {/* Saved Meals List */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-3">
+        <div className="p-3.5 sm:p-6 overflow-y-auto flex-1 space-y-3">
           {filteredMeals.length === 0 ? (
             <div className="py-12 text-center text-slate-400 space-y-2">
               <span className="text-3xl block">🥗</span>
@@ -391,7 +395,7 @@ export default function SavedMealsModal({
                 return (
                   <div
                     key={meal.id}
-                    className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3 animate-fadeIn"
+                    className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3 animate-fadeIn"
                   >
                     {editError && (
                       <div className="p-2 text-xs text-rose-600 bg-rose-50 border border-rose-100 rounded-lg">
@@ -479,15 +483,16 @@ export default function SavedMealsModal({
               return (
                 <div
                   key={meal.id}
-                  className="flex items-start justify-between p-3.5 bg-white border border-slate-100 hover:border-slate-200 rounded-xl transition shadow-xs group"
+                  className="p-3.5 sm:p-4 bg-white border border-slate-100 hover:border-slate-200 rounded-2xl transition shadow-xs group flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                 >
-                  <div className="flex-1 min-w-0 pr-3">
-                    <div className="flex items-center gap-1.5 flex-wrap">
+                  {/* Left / Top Info Block */}
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap min-w-0">
                       {meal.description ? (
                         <button
                           type="button"
                           onClick={() => toggleExpand(meal.id)}
-                          className="flex items-center gap-1 text-left font-bold text-slate-800 text-sm hover:text-amber-700 transition cursor-pointer group/title"
+                          className="flex items-center gap-1.5 text-left font-bold text-slate-800 text-sm hover:text-amber-700 transition cursor-pointer group/title min-w-0 max-w-full"
                           title={isExpanded ? 'Collapse recipe details' : 'Expand recipe details'}
                         >
                           {isExpanded ? (
@@ -495,16 +500,18 @@ export default function SavedMealsModal({
                           ) : (
                             <ChevronRight className="h-4 w-4 text-slate-400 group-hover/title:text-amber-600 shrink-0 transition" />
                           )}
-                          <span className="truncate">{meal.name}</span>
+                          <span className="truncate min-w-0">{meal.name}</span>
                         </button>
                       ) : (
-                        <h4 className="font-bold text-slate-800 text-sm truncate">{meal.name}</h4>
+                        <h4 className="font-bold text-slate-800 text-sm truncate min-w-0">{meal.name}</h4>
                       )}
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 shrink-0">
                         {meal.mealType}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-slate-400 mt-1">
+
+                    {/* Macros */}
+                    <div className="flex items-center gap-2 text-xs text-slate-400 flex-wrap">
                       <span className="font-semibold text-emerald-600">{meal.calories} kcal</span>
                       <span>•</span>
                       <span>P: <strong className="text-rose-500">{meal.protein}g</strong></span>
@@ -513,8 +520,10 @@ export default function SavedMealsModal({
                       <span>•</span>
                       <span>F: <strong className="text-amber-500">{meal.fats}g</strong></span>
                     </div>
+
+                    {/* Recipe Notes dropdown */}
                     {meal.description && isExpanded && (
-                      <div className="mt-2.5 text-xs bg-amber-50/80 border border-amber-200/80 rounded-lg p-2.5 text-slate-700 animate-fadeIn shadow-xs">
+                      <div className="mt-2.5 text-xs bg-amber-50/80 border border-amber-200/80 rounded-xl p-3 text-slate-700 animate-fadeIn shadow-xs">
                         <div className="font-bold text-[10px] text-amber-800 uppercase tracking-wide mb-1 flex items-center gap-1">
                           <Sparkles className="h-3 w-3 text-amber-600 shrink-0" />
                           <span>Recipe / Prompt Details:</span>
@@ -524,11 +533,11 @@ export default function SavedMealsModal({
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    {/* Log button */}
+                  {/* Right / Bottom Action Bar */}
+                  <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 shrink-0">
                     <button
                       onClick={() => handleLog(meal)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-xs ${
+                      className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 shadow-xs ${
                         isLogged
                           ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                           : 'bg-emerald-600 hover:bg-emerald-700 text-white'
@@ -545,21 +554,20 @@ export default function SavedMealsModal({
                       )}
                     </button>
 
-                    {/* Edit & Delete Actions */}
-                    <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition">
+                    <div className="flex items-center gap-1 opacity-90 sm:opacity-80 group-hover:opacity-100 transition shrink-0">
                       <button
                         onClick={() => handleStartEdit(meal)}
-                        className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-slate-50 rounded-lg transition"
+                        className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-slate-100 rounded-lg transition"
                         title="Edit meal template"
                       >
-                        <Edit2 className="h-3.5 w-3.5" />
+                        <Edit2 className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => onDeleteSavedMeal(meal.id)}
                         className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
                         title="Delete from saved library"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
