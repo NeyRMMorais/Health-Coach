@@ -217,6 +217,27 @@ service cloud.firestore {
 
         allow delete: if isSignedIn() && request.auth.uid == userId;
       }
+
+      match /workoutRoutines/{routineId} {
+        allow get: if isSignedIn() && request.auth.uid == userId;
+        allow list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isEmailVerified() &&
+                          isValidId(userId) &&
+                          isValidId(routineId) &&
+                          isOwner(userId) &&
+                          incoming().id == routineId &&
+                          incoming().userId == request.auth.uid;
+
+        allow update: if isEmailVerified() &&
+                          isValidId(userId) &&
+                          isValidId(routineId) &&
+                          isOwner(userId) &&
+                          incoming().id == existing().id &&
+                          incoming().userId == existing().userId;
+
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
     }
 
     match /feedback/{feedbackId} {

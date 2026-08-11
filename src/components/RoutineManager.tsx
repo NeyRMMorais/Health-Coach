@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Play, Plus, Dumbbell, Trash2, Edit, Check, ChevronRight, X, Calendar, HeartPulse, Flame, Sun, Layers, Sparkles } from 'lucide-react';
+import { collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '../firebase';
 import { WorkoutRoutine, RoutineDay, RoutineDayType, WorkoutExercise, Exercise, TargetMuscleGroup } from '../types';
 import { DEFAULT_ROUTINES } from '../data/defaultRoutines';
 import { ExerciseLibraryModal } from './ExerciseLibraryModal';
@@ -57,22 +59,105 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
     { id: `day-${Date.now()}-1`, dayNumber: 1, dayName: 'D1 - Workout Session', type: 'workout', exercises: [] },
   ]);
 
-  const handleAiRoutineSave = (newRoutine: WorkoutRoutine) => {
-    setRoutines((prev) => [newRoutine, ...prev]);
+  const handleAiRoutineSave = async (newRoutine: WorkoutRoutine) => {
+    const user = auth.currentUser;
+    if (user) {
+      try {
+        const rId = newRoutine.id.startsWith('routine-custom-') ? newRoutine.id : `routine-custom-${Date.now()}`;
+        const ref = doc(db, `users/${user.uid}/workoutRoutines`, rId);
+        await setDoc(
+          ref,
+          {
+            id: rId,
+            userId: user.uid,
+            title: newRoutine.title,
+            description: newRoutine.description || '',
+            days: newRoutine.days || [],
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      } catch (err) {
+        console.error('Firestore save AI routine error:', err);
+      }
+    } else {
+      setRoutines((prev) => [newRoutine, ...prev]);
+      const savedCustom = localStorage.getItem('custom_routines');
+      let customRoutines: WorkoutRoutine[] = savedCustom ? JSON.parse(savedCustom) : [];
+      customRoutines.unshift(newRoutine);
+      localStorage.setItem('custom_routines', JSON.stringify(customRoutines));
+    }
+  };
 
-    // Save to localStorage
+  // Real-time Firestore Sync & Auto-Migration for Workout Routines
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const routinesPath = `users/${user.uid}/workoutRoutines`;
+    const unsub = onSnapshot(
+      collection(db, routinesPath),
+      (snapshot) => {
+        const cloudRoutines: WorkoutRoutine[] = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          cloudRoutines.push({
+            id: docSnap.id,
+            userId: data.userId || user.uid,
+            title: data.title,
+            description: data.description,
+            days: data.days || [],
+            createdAt: data.createdAt,
+            updatedAt: data.updatedAt,
+          } as WorkoutRoutine);
+        });
+
+        // Filter deleted templates
+        const savedDeleted = localStorage.getItem('deleted_routine_ids');
+        const deletedIds: string[] = savedDeleted ? JSON.parse(savedDeleted) : [];
+
+        // Combine default routines with cloud custom routines
+        const combined = [...DEFAULT_ROUTINES, ...cloudRoutines];
+        setRoutines(combined.filter((r) => !deletedIds.includes(r.id)));
+      },
+      (error) => {
+        console.error('Firestore workoutRoutines listener error:', error);
+      }
+    );
+
+    // Auto-migrate any local custom routines saved previously into Firestore
     const savedCustom = localStorage.getItem('custom_routines');
-    let customRoutines: WorkoutRoutine[] = [];
     if (savedCustom) {
       try {
-        customRoutines = JSON.parse(savedCustom);
+        const localCustoms: WorkoutRoutine[] = JSON.parse(savedCustom);
+        if (localCustoms.length > 0) {
+          localCustoms.forEach(async (r) => {
+            const rId = r.id.startsWith('routine-custom-') ? r.id : `routine-custom-${Date.now()}`;
+            const ref = doc(db, `users/${user.uid}/workoutRoutines`, rId);
+            await setDoc(
+              ref,
+              {
+                id: rId,
+                userId: user.uid,
+                title: r.title,
+                description: r.description || '',
+                days: r.days || [],
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+              },
+              { merge: true }
+            );
+          });
+          localStorage.removeItem('custom_routines');
+        }
       } catch (e) {
-        customRoutines = [];
+        console.error('Failed to migrate local custom routines to Firestore:', e);
       }
     }
-    customRoutines.unshift(newRoutine);
-    localStorage.setItem('custom_routines', JSON.stringify(customRoutines));
-  };
+
+    return () => unsub();
+  }, []);
 
   // Track which day is currently being edited in the modal
 
@@ -149,58 +234,49 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
     setIsCreating(false);
   };
 
-  const handleSaveRoutine = (e: React.FormEvent) => {
+  const handleSaveRoutine = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!routineTitle.trim() || days.length === 0) return;
 
-    if (editingRoutineId) {
-      // Editing an existing routine
-      const updated = routines.map((r) => {
-        if (r.id === editingRoutineId) {
-          return {
-            ...r,
-            title: routineTitle.trim(),
-            description: routineDesc.trim() || 'Custom multi-day training schedule',
-            days,
-            updatedAt: new Date().toISOString(),
-          };
-        }
-        return r;
-      });
+    const user = auth.currentUser;
+    const rId = editingRoutineId || `routine-custom-${Date.now()}`;
 
-      setRoutines(updated);
+    const routinePayload: WorkoutRoutine = {
+      id: rId,
+      userId: user?.uid || 'guest',
+      title: routineTitle.trim(),
+      description: routineDesc.trim() || 'Custom multi-day training schedule',
+      days,
+      createdAt: new Date().toISOString(),
+    };
 
-      // Persist custom routines to localStorage
-      const savedCustom = localStorage.getItem('custom_routines');
-      let customRoutines: WorkoutRoutine[] = savedCustom ? JSON.parse(savedCustom) : [];
-      const updatedRoutineObj = updated.find((r) => r.id === editingRoutineId)!;
-      const existingIdx = customRoutines.findIndex((r) => r.id === editingRoutineId);
-
-      if (existingIdx >= 0) {
-        customRoutines[existingIdx] = updatedRoutineObj;
-      } else {
-        // If editing a default template, save as a customized routine
-        customRoutines.unshift(updatedRoutineObj);
+    if (user) {
+      try {
+        const ref = doc(db, `users/${user.uid}/workoutRoutines`, rId);
+        await setDoc(
+          ref,
+          {
+            id: rId,
+            userId: user.uid,
+            title: routinePayload.title,
+            description: routinePayload.description,
+            days: routinePayload.days,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      } catch (err) {
+        console.error('Firestore save routine error:', err);
       }
-      localStorage.setItem('custom_routines', JSON.stringify(customRoutines));
     } else {
-      // Creating new routine
-      const newRoutine: WorkoutRoutine = {
-        id: `routine-custom-${Date.now()}`,
-        userId: 'guest',
-        title: routineTitle.trim(),
-        description: routineDesc.trim() || 'Custom multi-day training schedule',
-        days,
-        createdAt: new Date().toISOString(),
-      };
+      const updated = editingRoutineId
+        ? routines.map((r) => (r.id === editingRoutineId ? routinePayload : r))
+        : [routinePayload, ...routines];
 
-      const updated = [newRoutine, ...routines];
       setRoutines(updated);
-
-      const savedCustom = localStorage.getItem('custom_routines');
-      let customRoutines: WorkoutRoutine[] = savedCustom ? JSON.parse(savedCustom) : [];
-      customRoutines.unshift(newRoutine);
-      localStorage.setItem('custom_routines', JSON.stringify(customRoutines));
+      const customOnly = updated.filter((r) => r.id.startsWith('routine-custom-'));
+      localStorage.setItem('custom_routines', JSON.stringify(customOnly));
     }
 
     // Reset form
@@ -211,22 +287,26 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
     setIsCreating(false);
   };
 
-  const handleDeleteRoutine = (routineId: string) => {
-    // Remove from active state
+  const handleDeleteRoutine = async (routineId: string) => {
+    const user = auth.currentUser;
+    if (user) {
+      try {
+        await deleteDoc(doc(db, `users/${user.uid}/workoutRoutines`, routineId));
+      } catch (err) {
+        console.error('Firestore delete routine error:', err);
+      }
+    }
+
+    // Remove from local state
     const updated = routines.filter((r) => r.id !== routineId);
     setRoutines(updated);
 
-    // Persist deleted IDs so default templates can be erased persistently
     const savedDeleted = localStorage.getItem('deleted_routine_ids');
     const deletedIds: string[] = savedDeleted ? JSON.parse(savedDeleted) : [];
     if (!deletedIds.includes(routineId)) {
       deletedIds.push(routineId);
       localStorage.setItem('deleted_routine_ids', JSON.stringify(deletedIds));
     }
-
-    // Also update custom routines list if it was a custom one
-    const customOnly = updated.filter((r) => r.id.startsWith('routine-custom-'));
-    localStorage.setItem('custom_routines', JSON.stringify(customOnly));
   };
 
   const handleLaunchDayWorkout = (routineTitle: string, day: RoutineDay) => {
