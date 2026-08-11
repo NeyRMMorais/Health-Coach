@@ -795,9 +795,9 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 space-y-6">
           
           {/* Two-Level Tab Navigation (Row 1: Main Groups, Row 2: Sub-Tabs) */}
-          <div className="space-y-2.5">
+          <div className="flex flex-col items-start gap-2.5">
             {/* Row 1: Main Group Switcher */}
-            <div className="flex bg-emerald-950 p-1.5 rounded-2xl border border-emerald-900/80 shadow-xl w-full sm:w-auto sm:inline-flex">
+            <div className="flex bg-emerald-950 p-1.5 rounded-2xl border border-emerald-900/80 shadow-xl max-w-full sm:max-w-md w-full sm:w-auto">
               {NAV_GROUPS.map((group) => {
                 const isActive = activeGroup === group.id;
                 return (
@@ -817,8 +817,8 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
               })}
             </div>
 
-            {/* Row 2: Sub-Tab Switcher (Always renders to keep height stable) */}
-            <div className="flex bg-white p-1 rounded-xl border border-emerald-100/80 shadow-xs w-full sm:w-auto sm:inline-flex overflow-x-auto scrollbar-none min-h-[42px] items-center">
+            {/* Row 2: Sub-Tab Switcher (Always renders stacked directly below Row 1) */}
+            <div className="flex bg-white p-1 rounded-xl border border-emerald-100/80 shadow-xs max-w-full sm:max-w-md w-full sm:w-auto overflow-x-auto scrollbar-none min-h-[42px] items-center">
               {currentGroupConfig?.subTabs.map((subTab) => {
                 const isSubActive = activeTab === subTab.id;
                 return (
