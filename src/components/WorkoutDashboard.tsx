@@ -89,10 +89,6 @@ export const WorkoutDashboard: React.FC = () => {
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-emerald-950/40 border border-slate-800 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-2xl relative overflow-hidden">
         <div className="space-y-2 max-w-xl z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold">
-            <Dumbbell className="w-3.5 h-3.5" />
-            Phase 1 • Strength Tracker Engine
-          </div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
             Strength Workout & Gym Tracker
           </h1>
