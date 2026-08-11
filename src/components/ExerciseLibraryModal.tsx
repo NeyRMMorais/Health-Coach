@@ -10,7 +10,7 @@ interface ExerciseLibraryModalProps {
 }
 
 const MUSCLE_GROUPS: TargetMuscleGroup[] = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Full Body'];
-const CATEGORIES: ExerciseCategory[] = ['Barbell', 'Dumbbell', 'Machine', 'Cable', 'Bodyweight'];
+const CATEGORIES: ExerciseCategory[] = ['Barbell', 'Dumbbell', 'Machine', 'Cable', 'Bodyweight', 'Stretching'];
 
 export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
   isOpen,

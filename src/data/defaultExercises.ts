@@ -42,4 +42,20 @@ export const DEFAULT_EXERCISES: Exercise[] = [
   { id: 'hanging-leg-raise', name: 'Hanging Leg Raise', targetMuscleGroup: 'Core', category: 'Bodyweight', description: 'Lower abdominal and hip flexor strength.' },
   { id: 'plank', name: 'Plank', targetMuscleGroup: 'Core', category: 'Bodyweight', description: 'Isometric core stability hold.' },
   { id: 'cable-ab-crunch', name: 'Kneeling Cable Ab Crunch', targetMuscleGroup: 'Core', category: 'Cable', description: 'Weighted abdominal crunch.' },
+
+  // Stretching & Flexibility
+  { id: 'standing-hamstring-stretch', name: 'Standing Hamstring Stretch', targetMuscleGroup: 'Legs', category: 'Stretching', description: 'Improves hamstring flexibility and relieves lower back tightness.' },
+  { id: 'standing-quad-stretch', name: 'Standing Quadriceps Stretch', targetMuscleGroup: 'Legs', category: 'Stretching', description: 'Stretches quads and hip flexors for mobility and posture.' },
+  { id: 'kneeling-hip-flexor-stretch', name: 'Kneeling Hip Flexor Stretch', targetMuscleGroup: 'Legs', category: 'Stretching', description: 'Opens tight hip flexors from prolonged sitting.' },
+  { id: 'pigeon-pose-stretch', name: 'Pigeon Pose Glute Stretch', targetMuscleGroup: 'Legs', category: 'Stretching', description: 'Deep glute and piriformis stretch for hip mobility.' },
+  { id: 'calf-wall-stretch', name: 'Standing Wall Calf Stretch', targetMuscleGroup: 'Legs', category: 'Stretching', description: 'Stretches gastrocnemius and soleus muscles in calves.' },
+  { id: 'seated-butterfly-stretch', name: 'Seated Butterfly Adductor Stretch', targetMuscleGroup: 'Legs', category: 'Stretching', description: 'Opens inner thighs, adductors, and groin muscles.' },
+  { id: 'cat-cow-stretch', name: 'Cat-Cow Spine Mobilization', targetMuscleGroup: 'Back', category: 'Stretching', description: 'Dynamic spinal flexion and extension for back mobility.' },
+  { id: 'child-pose-lat-stretch', name: "Child's Pose Lat Stretch", targetMuscleGroup: 'Back', category: 'Stretching', description: 'Relaxing stretch for lats, upper back, and shoulders.' },
+  { id: 'cobra-abdominal-stretch', name: 'Cobra / Upward Dog Stretch', targetMuscleGroup: 'Core', category: 'Stretching', description: 'Extends spine and stretches rectus abdominis.' },
+  { id: 'doorway-pec-stretch', name: 'Doorway Chest & Pec Stretch', targetMuscleGroup: 'Chest', category: 'Stretching', description: 'Opens tight pectoralis major and minor muscles.' },
+  { id: 'cross-body-shoulder-stretch', name: 'Cross-Body Shoulder Stretch', targetMuscleGroup: 'Shoulders', category: 'Stretching', description: 'Stretches posterior deltoid and upper back muscles.' },
+  { id: 'overhead-tricep-stretch', name: 'Overhead Tricep & Lat Stretch', targetMuscleGroup: 'Arms', category: 'Stretching', description: 'Stretches triceps and lats above head.' },
+  { id: 'world-greatest-stretch', name: "World's Greatest Stretch", targetMuscleGroup: 'Full Body', category: 'Stretching', description: 'Full-body dynamic warmup and mobility stretch.' },
+  { id: 'downward-facing-dog', name: 'Downward-Facing Dog', targetMuscleGroup: 'Full Body', category: 'Stretching', description: 'Comprehensive stretch for calves, hamstrings, back, and shoulders.' },
 ];
