@@ -37,6 +37,7 @@ This backlog tracks upcoming feature requests, architectural improvements, and b
 *   **⚡ Guest Mode & Local Storage Fallback**: Complete browser `localStorage` persistence for unauthenticated/offline users, with optimistic local UI state updates and automatic Firestore synchronization upon login.
 *   **🍲 Meal Ideas Library (Saved Meals Repository)**: Store staple/favorite meals in Firestore subcollection `/users/{userId}/savedMeals`, bookmark meals from diary or AI recipes, edit/delete saved templates, and log to daily food diary with 1-click.
 *   **⏱️ Specific Meal Timestamps**: Track the exact time a meal was consumed, with auto-fill to current time, manual picker, and mobile-optimized inline edit layout.
+*   **📅 Date Navigation Arrows (`<` / `>`)**: Added 1-click previous/next day date navigation arrows next to the date picker in the Food Diary header, with a quick reset to "Today".
 *   **✏️ Edit Logged Meal Categories**: Added the ability to reclassify a logged food item's category (Breakfast, Lunch, Dinner, Snack) directly from the dashboard.
 
 ## 💡 Future Enhancements (Low Priority)

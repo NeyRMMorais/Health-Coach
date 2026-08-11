@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Calendar, Trash2, Plus, Sparkles, AlertCircle, RefreshCw, Edit2, Check, X, Bookmark } from 'lucide-react';
+import { Calendar, Trash2, Plus, Sparkles, AlertCircle, RefreshCw, Edit2, Check, X, Bookmark, ChevronLeft, ChevronRight } from 'lucide-react';
 import { FoodLog, UserProfile, SavedMeal } from '../types';
 
 interface FoodLogSectionProps {
@@ -148,6 +148,18 @@ export default function FoodLogSection({
     onDateChange?.(d);
   };
 
+  const handleShiftDate = (daysDelta: number) => {
+    const [year, month, day] = selectedDate.split('-').map(Number);
+    const dateObj = new Date(year, month - 1, day);
+    dateObj.setDate(dateObj.getDate() + daysDelta);
+
+    const newYear = dateObj.getFullYear();
+    const newMonth = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const newDay = String(dateObj.getDate()).padStart(2, '0');
+
+    setSelectedDate(`${newYear}-${newMonth}-${newDay}`);
+  };
+
   const [activeTab, setActiveTab] = useState<'manual' | 'ai'>('manual');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -280,21 +292,42 @@ export default function FoodLogSection({
             📊 Daily Food Log
           </h2>
 
-          {/* Date Selector */}
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-slate-400" />
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={e => setSelectedDate(e.target.value)}
-              className="bg-slate-50 border border-slate-200 text-slate-700 font-semibold px-3 py-1.5 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
-            />
+          {/* Date Selector with Previous/Next Arrows */}
+          <div className="flex items-center gap-1.5">
             <button
-              onClick={() => setSelectedDate(todayStr)}
-              className="px-2 py-1 text-[11px] font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg transition"
+              onClick={() => handleShiftDate(-1)}
+              className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-xl transition flex items-center justify-center border border-slate-200/80 bg-slate-50 shadow-2xs"
+              title="Previous Day"
             >
-              Today
+              <ChevronLeft className="h-4 w-4" />
             </button>
+
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/80 px-3 py-1.5 rounded-xl shadow-2xs">
+              <Calendar className="h-4 w-4 text-emerald-600" />
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={e => setSelectedDate(e.target.value)}
+                className="bg-transparent text-slate-800 font-extrabold text-xs focus:outline-none cursor-pointer"
+              />
+            </div>
+
+            <button
+              onClick={() => handleShiftDate(1)}
+              className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-xl transition flex items-center justify-center border border-slate-200/80 bg-slate-50 shadow-2xs"
+              title="Next Day"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+
+            {selectedDate !== todayStr && (
+              <button
+                onClick={() => setSelectedDate(todayStr)}
+                className="px-2.5 py-1.5 text-[11px] font-extrabold bg-emerald-500 text-slate-950 hover:bg-emerald-400 rounded-xl transition shadow-sm ml-1"
+              >
+                Today
+              </button>
+            )}
           </div>
         </div>
 
