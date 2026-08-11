@@ -12,6 +12,11 @@ An intelligent, AI-powered health and nutrition coach application built with Rea
 
 ## ✨ Features
 
+- **🗂️ Two-Level Navigation Architecture**: Clean two-tier group navigation separating **Nutrition Coach** (*Food Diary*, *Meal Suggester*, *Analytics*) and **Strength Coach** (*Strength Coach*) with per-group memory.
+- **📱 Real-Time Cross-Device Routine Sync**: Synchronizes custom & AI-imported workout routines across web and mobile devices in real time via Cloud Firestore.
+- **✏️ In-Place Routine Editor**: Full editing capability to modify titles, training days, exercises, target sets, reps, and rest timers on existing routine cards.
+- **🧘 Stretching & Flexibility Library**: Expanded Exercise Library with 16 stretching exercises (including *90/90 Hip Mobility Stretch* & *Scapular Wall Slides*) and a dedicated `Stretching` category filter.
+- **📅 1-Click Date Navigation Arrows (`<` / `>`)**: Navigate day-by-day in the Food Diary header with previous/next day arrow controls and a quick reset to "Today".
 - **🏋️ Strength Coach & Gym Tracker (Phase 1)**:
   - **Set-by-Set Logger**: Track weight (**kg**), reps, RPE (1–10 scale / Reps in Reserve), and real-time **Est. 1RM** (Epley Formula $1\text{RM} = w \times (1 + r/30)$).
   - **Per-Exercise Rest Timers**: Preset timer options ($30\text{s}$ to $300\text{s}$) + custom input capability with floating timer overlays and Web Audio synthesized completion beeps.
