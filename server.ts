@@ -102,7 +102,7 @@ app.post("/api/gemini/estimate", async (req, res) => {
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-3.5-flash-lite",
       contents: `Estimate the calories (kcal) and macronutrients (protein, carbs, fats in grams) for this meal: "${query}". Provide a reasonable single food name or short summary as "name".`,
       config: {
         responseMimeType: "application/json",
@@ -156,7 +156,7 @@ app.post("/api/gemini/suggest-meals", async (req, res) => {
 Provide clear, structured recipes. Make sure preparation times, calories, and macros are realistic.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-3.6-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -338,7 +338,7 @@ Rules:
 4. For workout days, extract all exercises with targetMuscleGroup ('Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Full Body'), category ('Barbell', 'Dumbbell', 'Machine', 'Cable', 'Bodyweight'), targetSets (number, default 3), targetReps (number, default 10), and targetRestSeconds (number, default 90).`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.6-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
