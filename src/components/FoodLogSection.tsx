@@ -702,7 +702,7 @@ export default function FoodLogSection({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg py-2.5 text-xs transition flex items-center justify-center gap-1.5 shadow"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl py-2.5 text-xs transition flex items-center justify-center gap-1.5 shadow-xs"
             >
               <Plus className="h-4 w-4" />
               Log Wholesome Food
