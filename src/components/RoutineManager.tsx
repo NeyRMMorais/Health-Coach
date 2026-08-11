@@ -47,8 +47,9 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
     return combined.filter((r) => !deletedIds.includes(r.id));
   });
 
-  // Routine Creation & AI Architect State
+  // Routine Creation & Editing & AI Architect State
   const [isCreating, setIsCreating] = useState(false);
+  const [editingRoutineId, setEditingRoutineId] = useState<string | null>(null);
   const [isAiArchitectOpen, setIsAiArchitectOpen] = useState(false);
   const [routineTitle, setRoutineTitle] = useState('');
   const [routineDesc, setRoutineDesc] = useState('');
@@ -130,27 +131,80 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
     setDays(updatedDays);
   };
 
+  const handleStartEdit = (routine: WorkoutRoutine) => {
+    setEditingRoutineId(routine.id);
+    setRoutineTitle(routine.title);
+    setRoutineDesc(routine.description || '');
+    const clonedDays = JSON.parse(JSON.stringify(routine.days || []));
+    setDays(clonedDays.length > 0 ? clonedDays : [{ id: `day-${Date.now()}-1`, dayNumber: 1, dayName: 'D1 - Workout Session', type: 'workout', exercises: [] }]);
+    setActiveEditingDayIndex(0);
+    setIsCreating(true);
+  };
+
+  const handleCancelForm = () => {
+    setEditingRoutineId(null);
+    setRoutineTitle('');
+    setRoutineDesc('');
+    setDays([{ id: `day-${Date.now()}-1`, dayNumber: 1, dayName: 'D1 - Workout Session', type: 'workout', exercises: [] }]);
+    setIsCreating(false);
+  };
+
   const handleSaveRoutine = (e: React.FormEvent) => {
     e.preventDefault();
     if (!routineTitle.trim() || days.length === 0) return;
 
-    const newRoutine: WorkoutRoutine = {
-      id: `routine-custom-${Date.now()}`,
-      userId: 'guest',
-      title: routineTitle.trim(),
-      description: routineDesc.trim() || 'Custom multi-day training schedule',
-      days,
-      createdAt: new Date().toISOString(),
-    };
+    if (editingRoutineId) {
+      // Editing an existing routine
+      const updated = routines.map((r) => {
+        if (r.id === editingRoutineId) {
+          return {
+            ...r,
+            title: routineTitle.trim(),
+            description: routineDesc.trim() || 'Custom multi-day training schedule',
+            days,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return r;
+      });
 
-    const updated = [newRoutine, ...routines];
-    setRoutines(updated);
+      setRoutines(updated);
 
-    // Save custom routines to localStorage
-    const customOnly = updated.filter((r) => r.id.startsWith('routine-custom-'));
-    localStorage.setItem('custom_routines', JSON.stringify(customOnly));
+      // Persist custom routines to localStorage
+      const savedCustom = localStorage.getItem('custom_routines');
+      let customRoutines: WorkoutRoutine[] = savedCustom ? JSON.parse(savedCustom) : [];
+      const updatedRoutineObj = updated.find((r) => r.id === editingRoutineId)!;
+      const existingIdx = customRoutines.findIndex((r) => r.id === editingRoutineId);
+
+      if (existingIdx >= 0) {
+        customRoutines[existingIdx] = updatedRoutineObj;
+      } else {
+        // If editing a default template, save as a customized routine
+        customRoutines.unshift(updatedRoutineObj);
+      }
+      localStorage.setItem('custom_routines', JSON.stringify(customRoutines));
+    } else {
+      // Creating new routine
+      const newRoutine: WorkoutRoutine = {
+        id: `routine-custom-${Date.now()}`,
+        userId: 'guest',
+        title: routineTitle.trim(),
+        description: routineDesc.trim() || 'Custom multi-day training schedule',
+        days,
+        createdAt: new Date().toISOString(),
+      };
+
+      const updated = [newRoutine, ...routines];
+      setRoutines(updated);
+
+      const savedCustom = localStorage.getItem('custom_routines');
+      let customRoutines: WorkoutRoutine[] = savedCustom ? JSON.parse(savedCustom) : [];
+      customRoutines.unshift(newRoutine);
+      localStorage.setItem('custom_routines', JSON.stringify(customRoutines));
+    }
 
     // Reset form
+    setEditingRoutineId(null);
     setRoutineTitle('');
     setRoutineDesc('');
     setDays([{ id: `day-${Date.now()}-1`, dayNumber: 1, dayName: 'D1 - Workout Session', type: 'workout', exercises: [] }]);
@@ -231,14 +285,16 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
         </div>
       </div>
 
-      {/* Routine Creation Form */}
+      {/* Routine Creation & Editing Form */}
       {isCreating && (
         <form onSubmit={handleSaveRoutine} className="bg-slate-900 border border-emerald-500/30 rounded-2xl p-6 space-y-6 shadow-2xl">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <h3 className="text-base font-bold text-emerald-400">Create Multi-Day Training Schedule</h3>
+            <h3 className="text-base font-bold text-emerald-400">
+              {editingRoutineId ? 'Edit Routine Schedule' : 'Create Multi-Day Training Schedule'}
+            </h3>
             <button
               type="button"
-              onClick={() => setIsCreating(false)}
+              onClick={handleCancelForm}
               className="text-slate-400 hover:text-white"
             >
               <X className="w-5 h-5" />
@@ -495,7 +551,7 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
           <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
             <button
               type="button"
-              onClick={() => setIsCreating(false)}
+              onClick={handleCancelForm}
               className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:bg-slate-800"
             >
               Cancel
@@ -505,7 +561,7 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
               disabled={!routineTitle.trim() || days.length === 0}
               className="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 disabled:opacity-50"
             >
-              Save Training Schedule
+              {editingRoutineId ? 'Save Changes' : 'Save Training Schedule'}
             </button>
           </div>
         </form>
@@ -562,18 +618,28 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
                       )}
                     </div>
 
-                    {/* Delete Routine / Template Button (Works for ALL templates!) */}
-                    <button
-                      onClick={() => {
-                        if (window.confirm(`Are you sure you want to erase template "${routine.title}"?`)) {
-                          handleDeleteRoutine(routine.id);
-                        }
-                      }}
-                      className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors shrink-0"
-                      title="Erase Routine / Template"
-                    >
-                      <Trash2 className="w-4.5 h-4.5" />
-                    </button>
+                    {/* Edit & Delete Actions */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => handleStartEdit(routine)}
+                        className="p-2 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors"
+                        title="Edit Routine Schedule"
+                      >
+                        <Edit className="w-4.5 h-4.5" />
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Are you sure you want to erase template "${routine.title}"?`)) {
+                            handleDeleteRoutine(routine.id);
+                          }
+                        }}
+                        className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                        title="Erase Routine / Template"
+                      >
+                        <Trash2 className="w-4.5 h-4.5" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Multi-Day Schedule Breakdown */}
