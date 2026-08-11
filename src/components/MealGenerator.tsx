@@ -235,12 +235,11 @@ export default function MealGenerator({
         </div>
       </div>
 
-      {/* Generate Button */}
       <button
         type="button"
         onClick={handleGenerate}
         disabled={isLoading}
-        className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl py-3 text-sm transition flex items-center justify-center gap-2 shadow disabled:opacity-75 disabled:cursor-not-allowed"
+        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl py-3 text-sm transition flex items-center justify-center gap-2 shadow-xs disabled:opacity-75 disabled:cursor-not-allowed"
       >
         <Sparkles className="h-4 w-4" />
         Generate Wholesome Recipes
