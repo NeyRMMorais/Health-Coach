@@ -185,12 +185,11 @@ Day 4: Legs & Core - Barbell Squats 4x8, Romanian Deadlifts 3x10, Leg Extension 
                 </div>
               )}
 
-              {/* Submit Action */}
               <button
                 type="button"
                 disabled={isLoading || !rawText.trim()}
                 onClick={handleArchitectRoutine}
-                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-sm transition-all shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 font-black text-sm transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
                   <>

@@ -215,7 +215,7 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsAiArchitectOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 text-xs font-black shadow-lg shadow-cyan-500/20 transition-all"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 text-xs font-black shadow-lg shadow-emerald-500/20 transition-all"
           >
             <Sparkles className="w-4 h-4 fill-slate-950" />
             Import with AI ✨
