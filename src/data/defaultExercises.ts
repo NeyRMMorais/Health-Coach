@@ -58,4 +58,6 @@ export const DEFAULT_EXERCISES: Exercise[] = [
   { id: 'overhead-tricep-stretch', name: 'Overhead Tricep & Lat Stretch', targetMuscleGroup: 'Arms', category: 'Stretching', description: 'Stretches triceps and lats above head.' },
   { id: 'world-greatest-stretch', name: "World's Greatest Stretch", targetMuscleGroup: 'Full Body', category: 'Stretching', description: 'Full-body dynamic warmup and mobility stretch.' },
   { id: 'downward-facing-dog', name: 'Downward-Facing Dog', targetMuscleGroup: 'Full Body', category: 'Stretching', description: 'Comprehensive stretch for calves, hamstrings, back, and shoulders.' },
+  { id: '90-90-hip-stretch', name: '90/90 Hip Mobility Stretch', targetMuscleGroup: 'Legs', category: 'Stretching', description: 'Internal & external hip rotation stretch for hip joint health & lower back relief.' },
+  { id: 'scapular-wall-slides', name: 'Scapular Wall Slides', targetMuscleGroup: 'Shoulders', category: 'Stretching', description: 'Postural wall slide for thoracic extension, scapular control & shoulder mobility.' },
 ];
