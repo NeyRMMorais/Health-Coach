@@ -797,14 +797,14 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
           {/* Two-Level Tab Navigation (Row 1: Main Groups, Row 2: Sub-Tabs) */}
           <div className="space-y-2.5">
             {/* Row 1: Main Group Switcher */}
-            <div className="flex bg-emerald-950 p-1.5 rounded-2xl border border-emerald-900/80 shadow-xl max-w-md">
+            <div className="flex bg-emerald-950 p-1.5 rounded-2xl border border-emerald-900/80 shadow-xl w-full sm:w-auto sm:inline-flex">
               {NAV_GROUPS.map((group) => {
                 const isActive = activeGroup === group.id;
                 return (
                   <button
                     key={group.id}
                     onClick={() => handleSelectGroup(group.id)}
-                    className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
+                    className={`flex-1 sm:flex-initial py-2.5 px-6 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
                       isActive
                         ? 'bg-emerald-500 text-slate-950 shadow-md'
                         : 'text-emerald-200/70 hover:text-white hover:bg-emerald-900/60'
@@ -818,14 +818,14 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
             </div>
 
             {/* Row 2: Sub-Tab Switcher (Always renders to keep height stable) */}
-            <div className="flex bg-white p-1 rounded-xl border border-emerald-100/80 shadow-xs max-w-xl overflow-x-auto scrollbar-none min-h-[42px] items-center">
+            <div className="flex bg-white p-1 rounded-xl border border-emerald-100/80 shadow-xs w-full sm:w-auto sm:inline-flex overflow-x-auto scrollbar-none min-h-[42px] items-center">
               {currentGroupConfig?.subTabs.map((subTab) => {
                 const isSubActive = activeTab === subTab.id;
                 return (
                   <button
                     key={subTab.id}
                     onClick={() => handleSelectSubTab(subTab.id)}
-                    className={`flex-1 py-1.5 px-3.5 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
+                    className={`flex-1 sm:flex-initial py-1.5 px-4 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
                       isSubActive
                         ? 'bg-emerald-600 text-white shadow-xs'
                         : 'text-slate-500 hover:text-emerald-700 hover:bg-emerald-50/60'

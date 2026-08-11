@@ -77,7 +77,7 @@ export const WorkoutDashboard: React.FC = () => {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="w-full space-y-6">
       {/* Toast Notification */}
       {successToast && (
         <div className="bg-emerald-500 text-slate-950 px-4 py-3 rounded-2xl font-bold text-sm shadow-xl flex items-center gap-2 animate-bounce">
