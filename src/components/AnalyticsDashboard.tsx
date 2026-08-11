@@ -142,10 +142,10 @@ export default function AnalyticsDashboard({ logs, profile }: AnalyticsDashboard
               <button
                 key={btn.id}
                 onClick={() => setFilter(btn.id)}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-150 ${
+                className={`px-3.5 py-1.5 text-xs font-extrabold rounded-lg transition-all duration-150 ${
                   filter === btn.id
-                    ? 'bg-slate-900 text-white shadow-sm'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-500 hover:text-emerald-700 hover:bg-emerald-50/60'
                 }`}
               >
                 {btn.label}
