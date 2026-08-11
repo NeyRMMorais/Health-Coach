@@ -32,7 +32,9 @@ import {
   Copy,
   MessageSquare,
   Bookmark,
-  Dumbbell
+  Dumbbell,
+  Utensils,
+  TrendingUp
 } from 'lucide-react';
 
 import { auth, db, handleFirestoreError, OperationType } from './firebase';
@@ -46,6 +48,41 @@ import MealGenerator from './components/MealGenerator';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import { WorkoutDashboard } from './components/WorkoutDashboard';
 
+// Two-Level Navigation Config Model
+export interface SubTabConfig {
+  id: string;
+  label: string;
+  icon?: React.ReactNode;
+}
+
+export interface MainGroupConfig {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  subTabs: SubTabConfig[];
+}
+
+const NAV_GROUPS: MainGroupConfig[] = [
+  {
+    id: 'nutrition',
+    label: 'Nutrition Coach',
+    icon: <Apple className="h-4 w-4" />,
+    subTabs: [
+      { id: 'tracker', label: 'Food Diary', icon: <Utensils className="h-3.5 w-3.5" /> },
+      { id: 'suggest', label: 'Meal Suggester', icon: <Sparkles className="h-3.5 w-3.5 text-amber-400 fill-amber-400" /> },
+      { id: 'analytics', label: 'Analytics', icon: <TrendingUp className="h-3.5 w-3.5" /> },
+    ],
+  },
+  {
+    id: 'strength',
+    label: 'Strength Coach',
+    icon: <Dumbbell className="h-4 w-4" />,
+    subTabs: [
+      { id: 'strength', label: 'Strength Coach', icon: <Dumbbell className="h-3.5 w-3.5" /> },
+    ],
+  },
+];
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
@@ -55,7 +92,28 @@ export default function App() {
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
   const [isSavedMealsOpen, setIsSavedMealsOpen] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'tracker' | 'suggest' | 'analytics' | 'strength'>('tracker');
+
+  // Two-Level Navigation State with Per-Group Memory
+  const [activeGroup, setActiveGroup] = useState<string>('nutrition');
+  const [activeTabByGroup, setActiveTabByGroup] = useState<Record<string, string>>({
+    nutrition: 'tracker',
+    strength: 'strength',
+  });
+
+  const activeTab = activeTabByGroup[activeGroup] || 'tracker';
+
+  const handleSelectGroup = (groupId: string) => {
+    setActiveGroup(groupId);
+  };
+
+  const handleSelectSubTab = (subTabId: string) => {
+    setActiveTabByGroup((prev) => ({
+      ...prev,
+      [activeGroup]: subTabId,
+    }));
+  };
+
+  const currentGroupConfig = NAV_GROUPS.find((g) => g.id === activeGroup);
   const [authError, setAuthError] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
 
@@ -736,50 +794,53 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
         {/* Page Container */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 space-y-6">
           
-          {/* Main Visual Tabs (Daily Tracker vs Meal Generator vs Analytics vs Strength) */}
-          <div className="flex bg-white p-1 rounded-xl border border-slate-100 shadow-sm max-w-xl overflow-x-auto scrollbar-none">
-            <button
-              onClick={() => setActiveTab('tracker')}
-              className={`flex-1 py-2 px-3 text-xs font-semibold rounded-lg transition-all duration-150 whitespace-nowrap ${
-                activeTab === 'tracker'
-                  ? 'bg-slate-900 text-white shadow'
-                  : 'text-slate-600 hover:text-slate-800'
-              }`}
-            >
-              📊 Food Diary
-            </button>
-            <button
-              onClick={() => setActiveTab('suggest')}
-              className={`flex-1 py-2 px-3 text-xs font-semibold rounded-lg transition-all duration-150 flex items-center justify-center gap-1 whitespace-nowrap ${
-                activeTab === 'suggest'
-                  ? 'bg-slate-900 text-white shadow'
-                  : 'text-slate-600 hover:text-slate-800'
-              }`}
-            >
-              <Sparkles className="h-3 w-3 text-amber-400 fill-amber-400" />
-              Meal Suggester
-            </button>
-            <button
-              onClick={() => setActiveTab('analytics')}
-              className={`flex-1 py-2 px-3 text-xs font-semibold rounded-lg transition-all duration-150 flex items-center justify-center gap-1 whitespace-nowrap ${
-                activeTab === 'analytics'
-                  ? 'bg-slate-900 text-white shadow'
-                  : 'text-slate-600 hover:text-slate-800'
-              }`}
-            >
-              📈 Analytics
-            </button>
-            <button
-              onClick={() => setActiveTab('strength')}
-              className={`flex-1 py-2 px-3 text-xs font-semibold rounded-lg transition-all duration-150 flex items-center justify-center gap-1 whitespace-nowrap ${
-                activeTab === 'strength'
-                  ? 'bg-emerald-600 text-white shadow'
-                  : 'text-slate-600 hover:text-slate-800'
-              }`}
-            >
-              <Dumbbell className="h-3.5 w-3.5 text-white" />
-              Strength Coach
-            </button>
+          {/* Two-Level Tab Navigation (Row 1: Main Groups, Row 2: Sub-Tabs) */}
+          <div className="space-y-2.5">
+            {/* Row 1: Main Group Switcher */}
+            <div className="flex bg-slate-950 p-1.5 rounded-2xl border border-slate-800 shadow-xl max-w-md">
+              {NAV_GROUPS.map((group) => {
+                const isActive = activeGroup === group.id;
+                return (
+                  <button
+                    key={group.id}
+                    onClick={() => handleSelectGroup(group.id)}
+                    className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
+                      isActive
+                        ? group.id === 'strength'
+                          ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 shadow-md'
+                          : 'bg-white text-slate-950 shadow-md'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                    }`}
+                  >
+                    {group.icon}
+                    <span>{group.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Row 2: Sub-Tab Switcher (Always renders to keep height stable) */}
+            <div className="flex bg-white p-1 rounded-xl border border-slate-100 shadow-sm max-w-xl overflow-x-auto scrollbar-none min-h-[42px] items-center">
+              {currentGroupConfig?.subTabs.map((subTab) => {
+                const isSubActive = activeTab === subTab.id;
+                return (
+                  <button
+                    key={subTab.id}
+                    onClick={() => handleSelectSubTab(subTab.id)}
+                    className={`flex-1 py-1.5 px-3.5 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
+                      isSubActive
+                        ? activeGroup === 'strength'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'bg-slate-900 text-white shadow-xs'
+                        : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                    }`}
+                  >
+                    {subTab.icon}
+                    <span>{subTab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <AnimatePresence mode="wait">
