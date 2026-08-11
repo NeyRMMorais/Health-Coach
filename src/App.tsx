@@ -797,7 +797,7 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
           {/* Two-Level Tab Navigation (Row 1: Main Groups, Row 2: Sub-Tabs) */}
           <div className="space-y-2.5">
             {/* Row 1: Main Group Switcher */}
-            <div className="flex bg-slate-950 p-1.5 rounded-2xl border border-slate-800 shadow-xl max-w-md">
+            <div className="flex bg-emerald-950 p-1.5 rounded-2xl border border-emerald-900/80 shadow-xl max-w-md">
               {NAV_GROUPS.map((group) => {
                 const isActive = activeGroup === group.id;
                 return (
@@ -806,10 +806,8 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
                     onClick={() => handleSelectGroup(group.id)}
                     className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
                       isActive
-                        ? group.id === 'strength'
-                          ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 shadow-md'
-                          : 'bg-white text-slate-950 shadow-md'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                        ? 'bg-emerald-500 text-slate-950 shadow-md'
+                        : 'text-emerald-200/70 hover:text-white hover:bg-emerald-900/60'
                     }`}
                   >
                     {group.icon}
@@ -820,7 +818,7 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
             </div>
 
             {/* Row 2: Sub-Tab Switcher (Always renders to keep height stable) */}
-            <div className="flex bg-white p-1 rounded-xl border border-slate-100 shadow-sm max-w-xl overflow-x-auto scrollbar-none min-h-[42px] items-center">
+            <div className="flex bg-white p-1 rounded-xl border border-emerald-100/80 shadow-xs max-w-xl overflow-x-auto scrollbar-none min-h-[42px] items-center">
               {currentGroupConfig?.subTabs.map((subTab) => {
                 const isSubActive = activeTab === subTab.id;
                 return (
@@ -829,10 +827,8 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
                     onClick={() => handleSelectSubTab(subTab.id)}
                     className={`flex-1 py-1.5 px-3.5 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
                       isSubActive
-                        ? activeGroup === 'strength'
-                          ? 'bg-emerald-600 text-white shadow-xs'
-                          : 'bg-slate-900 text-white shadow-xs'
-                        : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-slate-500 hover:text-emerald-700 hover:bg-emerald-50/60'
                     }`}
                   >
                     {subTab.icon}
