@@ -93,24 +93,65 @@ export default function App() {
   const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
   const [isSavedMealsOpen, setIsSavedMealsOpen] = useState<boolean>(false);
 
-  // Two-Level Navigation State with Per-Group Memory
-  const [activeGroup, setActiveGroup] = useState<string>('nutrition');
-  const [activeTabByGroup, setActiveTabByGroup] = useState<Record<string, string>>({
-    nutrition: 'tracker',
-    strength: 'strength',
+  // Two-Level Navigation State with Per-Group Memory & Local Persistence
+  const [activeGroup, setActiveGroup] = useState<string>(() => {
+    try {
+      // If there's an in-progress active workout draft, open directly to strength coach
+      if (localStorage.getItem('healthcoach_active_workout_draft')) {
+        return 'strength';
+      }
+      const savedGroup = localStorage.getItem('healthcoach_active_group');
+      if (savedGroup && NAV_GROUPS.some((g) => g.id === savedGroup)) {
+        return savedGroup;
+      }
+    } catch (e) {
+      console.error('Failed to load active group from storage', e);
+    }
+    return 'nutrition';
   });
 
-  const activeTab = activeTabByGroup[activeGroup] || 'tracker';
+  const [activeTabByGroup, setActiveTabByGroup] = useState<Record<string, string>>(() => {
+    try {
+      const savedTabs = localStorage.getItem('healthcoach_active_tab_by_group');
+      if (savedTabs) {
+        const parsed = JSON.parse(savedTabs);
+        if (parsed && typeof parsed === 'object') {
+          return {
+            nutrition: parsed.nutrition || 'tracker',
+            strength: 'strength',
+            ...parsed,
+          };
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load tab states from storage', e);
+    }
+    return {
+      nutrition: 'tracker',
+      strength: 'strength',
+    };
+  });
+
+  const activeTab = activeTabByGroup[activeGroup] || (activeGroup === 'strength' ? 'strength' : 'tracker');
 
   const handleSelectGroup = (groupId: string) => {
     setActiveGroup(groupId);
+    try {
+      localStorage.setItem('healthcoach_active_group', groupId);
+    } catch (e) {}
   };
 
   const handleSelectSubTab = (subTabId: string) => {
-    setActiveTabByGroup((prev) => ({
-      ...prev,
-      [activeGroup]: subTabId,
-    }));
+    setActiveTabByGroup((prev) => {
+      const next = {
+        ...prev,
+        [activeGroup]: subTabId,
+      };
+      try {
+        localStorage.setItem('healthcoach_active_tab_by_group', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
   };
 
   const currentGroupConfig = NAV_GROUPS.find((g) => g.id === activeGroup);

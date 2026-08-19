@@ -1,7 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Plus, Trash2, Check, Clock, Dumbbell, Award, RotateCcw, ChevronRight, X, Volume2 } from 'lucide-react';
+import { Play, Pause, Plus, Trash2, Check, Clock, Dumbbell, Award, RotateCcw, ChevronRight, X, Volume2, AlertTriangle } from 'lucide-react';
 import { WorkoutLog, WorkoutExercise, ExerciseSet, Exercise, TargetMuscleGroup, ExerciseCategory } from '../types';
 import { ExerciseLibraryModal } from './ExerciseLibraryModal';
+
+export const ACTIVE_WORKOUT_DRAFT_KEY = 'healthcoach_active_workout_draft';
+
+export interface ActiveWorkoutDraft {
+  workoutName: string;
+  exercises: WorkoutExercise[];
+  startedAtTimestamp: number;
+  accumulatedElapsedSeconds: number;
+  lastResumeTimestamp: number;
+  isPaused: boolean;
+  restDuration: number;
+  restEndTimeStamp: number | null;
+  isRestActive: boolean;
+}
 
 interface ActiveWorkoutLoggerProps {
   initialWorkoutName?: string;
@@ -36,66 +50,177 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
   onFinishWorkout,
   onCancel,
 }) => {
-  const [workoutName, setWorkoutName] = useState(initialWorkoutName);
+  // Load initial state from localStorage draft if present
+  const [savedDraft] = useState<ActiveWorkoutDraft | null>(() => {
+    try {
+      const raw = localStorage.getItem(ACTIVE_WORKOUT_DRAFT_KEY);
+      if (raw) {
+        return JSON.parse(raw);
+      }
+    } catch (e) {
+      console.error('Error parsing active workout draft', e);
+    }
+    return null;
+  });
+
+  const [workoutName, setWorkoutName] = useState<string>(
+    savedDraft?.workoutName ?? initialWorkoutName
+  );
   const [exercises, setExercises] = useState<WorkoutExercise[]>(() => {
+    if (savedDraft?.exercises && savedDraft.exercises.length > 0) {
+      return savedDraft.exercises;
+    }
     if (initialExercises.length > 0) return initialExercises;
     return [];
   });
 
-  // Elapsed Session Timer
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
+  // Wall-Clock Time Tracking
+  const [startedAtTimestamp] = useState<number>(
+    savedDraft?.startedAtTimestamp ?? Date.now()
+  );
+  const [accumulatedElapsedSeconds, setAccumulatedElapsedSeconds] = useState<number>(
+    savedDraft?.accumulatedElapsedSeconds ?? 0
+  );
+  const [lastResumeTimestamp, setLastResumeTimestamp] = useState<number>(
+    savedDraft?.lastResumeTimestamp ?? Date.now()
+  );
+  const [isPaused, setIsPaused] = useState<boolean>(
+    savedDraft?.isPaused ?? false
+  );
 
-  // Rest Timer State
-  const [restDuration, setRestDuration] = useState(90); // default 90s
-  const [restRemaining, setRestRemaining] = useState<number | null>(null);
-  const [isRestActive, setIsRestActive] = useState(false);
+  // Compute live elapsed seconds
+  const computeElapsed = () => {
+    if (isPaused) return accumulatedElapsedSeconds;
+    const delta = Math.floor((Date.now() - lastResumeTimestamp) / 1000);
+    return Math.max(0, accumulatedElapsedSeconds + Math.max(0, delta));
+  };
+
+  const [elapsedSeconds, setElapsedSeconds] = useState<number>(computeElapsed);
+
+  // Rest Timer State with wall-clock end timestamp
+  const [restDuration, setRestDuration] = useState<number>(
+    savedDraft?.restDuration ?? 90
+  );
+  const [restEndTimeStamp, setRestEndTimeStamp] = useState<number | null>(() => {
+    if (savedDraft?.isRestActive && savedDraft.restEndTimeStamp) {
+      return savedDraft.restEndTimeStamp;
+    }
+    return null;
+  });
+  const [isRestActive, setIsRestActive] = useState<boolean>(() => {
+    if (savedDraft?.isRestActive && savedDraft.restEndTimeStamp) {
+      return savedDraft.restEndTimeStamp > Date.now();
+    }
+    return false;
+  });
+  const [restRemaining, setRestRemaining] = useState<number | null>(() => {
+    if (savedDraft?.isRestActive && savedDraft.restEndTimeStamp) {
+      const rem = Math.ceil((savedDraft.restEndTimeStamp - Date.now()) / 1000);
+      return rem > 0 ? rem : null;
+    }
+    return null;
+  });
   const [customRestInput, setCustomRestInput] = useState('');
 
-  // Exercise Library Modal State
+  // Modals
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [showDiscardModal, setShowDiscardModal] = useState(false);
 
-  // Start Session Elapsed Timer
+  // Auto-save draft helper
+  const saveDraft = (overrides?: Partial<ActiveWorkoutDraft>) => {
+    try {
+      const draft: ActiveWorkoutDraft = {
+        workoutName,
+        exercises,
+        startedAtTimestamp,
+        accumulatedElapsedSeconds: isPaused ? accumulatedElapsedSeconds : computeElapsed(),
+        lastResumeTimestamp: isPaused ? lastResumeTimestamp : Date.now(),
+        isPaused,
+        restDuration,
+        restEndTimeStamp,
+        isRestActive,
+        ...overrides,
+      };
+      localStorage.setItem(ACTIVE_WORKOUT_DRAFT_KEY, JSON.stringify(draft));
+    } catch (e) {
+      console.error('Failed to save workout draft', e);
+    }
+  };
+
+  // Synchronize Elapsed Time accurately via Wall-Clock timer
   useEffect(() => {
-    let interval: any = null;
+    const timer = setInterval(() => {
+      if (!isPaused) {
+        setElapsedSeconds(computeElapsed());
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isPaused, lastResumeTimestamp, accumulatedElapsedSeconds]);
+
+  // Rest Countdown Timer with wall-clock sync
+  useEffect(() => {
+    if (!isRestActive || !restEndTimeStamp) return;
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const remaining = Math.max(0, Math.ceil((restEndTimeStamp - now) / 1000));
+      setRestRemaining(remaining);
+
+      if (remaining <= 0) {
+        setIsRestActive(false);
+        setRestEndTimeStamp(null);
+        setRestRemaining(null);
+        saveDraft({ isRestActive: false, restEndTimeStamp: null });
+        playCompletionBeep();
+        clearInterval(interval);
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [isRestActive, restEndTimeStamp]);
+
+  // Save draft whenever exercises, name, or pause state change
+  useEffect(() => {
+    saveDraft();
+  }, [workoutName, exercises, isPaused, restDuration, isRestActive, restEndTimeStamp]);
+
+  // Pause / Resume Handlers
+  const handleTogglePause = () => {
     if (!isPaused) {
-      interval = setInterval(() => {
-        setElapsedSeconds((prev) => prev + 1);
-      }, 1000);
+      const current = computeElapsed();
+      setAccumulatedElapsedSeconds(current);
+      setIsPaused(true);
+      saveDraft({ isPaused: true, accumulatedElapsedSeconds: current });
+    } else {
+      const now = Date.now();
+      setLastResumeTimestamp(now);
+      setIsPaused(false);
+      saveDraft({ isPaused: false, lastResumeTimestamp: now });
     }
-    return () => clearInterval(interval);
-  }, [isPaused]);
-
-  // Rest Countdown Timer
-  useEffect(() => {
-    let interval: any = null;
-    if (isRestActive && restRemaining !== null && restRemaining > 0) {
-      interval = setInterval(() => {
-        setRestRemaining((prev) => (prev !== null ? prev - 1 : 0));
-      }, 1000);
-    } else if (isRestActive && restRemaining === 0) {
-      setIsRestActive(false);
-      setRestRemaining(null);
-      playCompletionBeep();
-    }
-    return () => clearInterval(interval);
-  }, [isRestActive, restRemaining]);
+  };
 
   const startRestTimer = (seconds: number = restDuration) => {
+    const end = Date.now() + seconds * 1000;
     setRestDuration(seconds);
+    setRestEndTimeStamp(end);
     setRestRemaining(seconds);
     setIsRestActive(true);
+    saveDraft({ restDuration: seconds, restEndTimeStamp: end, isRestActive: true });
   };
 
   const cancelRestTimer = () => {
     setIsRestActive(false);
+    setRestEndTimeStamp(null);
     setRestRemaining(null);
+    saveDraft({ isRestActive: false, restEndTimeStamp: null });
   };
 
   const adjustRestTime = (deltaSeconds: number) => {
-    if (restRemaining !== null) {
-      const next = Math.max(0, restRemaining + deltaSeconds);
-      setRestRemaining(next);
+    if (restEndTimeStamp) {
+      const newEnd = Math.max(Date.now(), restEndTimeStamp + deltaSeconds * 1000);
+      setRestEndTimeStamp(newEnd);
+      setRestRemaining(Math.max(0, Math.ceil((newEnd - Date.now()) / 1000)));
+      saveDraft({ restEndTimeStamp: newEnd });
     }
   };
 
@@ -203,6 +328,12 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
   };
 
   const handleFinish = () => {
+    try {
+      localStorage.removeItem(ACTIVE_WORKOUT_DRAFT_KEY);
+    } catch (e) {
+      console.error('Failed to clear workout draft on finish', e);
+    }
+
     const now = new Date();
     const dateStr = now.toISOString().split('T')[0];
     const timeStr = now.toTimeString().substring(0, 5);
@@ -221,6 +352,24 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
     };
 
     onFinishWorkout(log);
+  };
+
+  const handleDiscardClick = () => {
+    if (exercises.length === 0 && elapsedSeconds < 30) {
+      handleConfirmDiscard();
+    } else {
+      setShowDiscardModal(true);
+    }
+  };
+
+  const handleConfirmDiscard = () => {
+    try {
+      localStorage.removeItem(ACTIVE_WORKOUT_DRAFT_KEY);
+    } catch (e) {
+      console.error('Failed to clear workout draft on discard', e);
+    }
+    setShowDiscardModal(false);
+    onCancel();
   };
 
   // Format Elapsed Time (HH:MM:SS)
@@ -266,14 +415,14 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setIsPaused(!isPaused)}
+              onClick={handleTogglePause}
               className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
               title={isPaused ? 'Resume Session' : 'Pause Session'}
             >
               {isPaused ? <Play className="w-4 h-4 text-emerald-400" /> : <Pause className="w-4 h-4" />}
             </button>
             <button
-              onClick={onCancel}
+              onClick={handleDiscardClick}
               className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
             >
               Discard
@@ -452,18 +601,15 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
                 <thead>
                   <tr className="text-slate-400 border-b border-slate-800 pb-2">
                     <th className="pb-2 w-12 text-center">Set</th>
-                    <th className="pb-2 w-16 text-center">Warmup</th>
                     <th className="pb-2">Weight (kg)</th>
                     <th className="pb-2">Reps</th>
                     <th className="pb-2 w-20">RPE (1-10)</th>
-                    <th className="pb-2 text-slate-500">Est. 1RM</th>
                     <th className="pb-2 w-16 text-center">Done</th>
                     <th className="pb-2 w-10"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
                   {ex.sets.map((s, setIndex) => {
-                    const est1RM = calculate1RM(s.weight, s.reps);
                     return (
                       <tr
                         key={s.id}
@@ -473,17 +619,7 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
                       >
                         {/* Set Number */}
                         <td className="py-2.5 text-center font-bold text-slate-300">
-                          {s.isWarmup ? <span className="text-amber-400 font-semibold">W</span> : s.setNumber}
-                        </td>
-
-                        {/* Warmup Checkbox */}
-                        <td className="py-2.5 text-center">
-                          <input
-                            type="checkbox"
-                            checked={s.isWarmup || false}
-                            onChange={(e) => handleUpdateSet(exIndex, setIndex, 'isWarmup', e.target.checked)}
-                            className="rounded border-slate-700 text-amber-500 focus:ring-0 bg-slate-950 cursor-pointer"
-                          />
+                          {s.setNumber}
                         </td>
 
                         {/* Weight */}
@@ -528,11 +664,6 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
                               </option>
                             ))}
                           </select>
-                        </td>
-
-                        {/* Est 1RM */}
-                        <td className="py-2.5 text-slate-400 font-mono">
-                          {est1RM > 0 ? `${est1RM} kg` : '-'}
                         </td>
 
                         {/* Complete Checkbox */}
@@ -595,6 +726,37 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
         onClose={() => setIsLibraryOpen(false)}
         onSelectExercise={handleAddExerciseFromLibrary}
       />
+
+      {/* Discard Workout Confirmation Modal */}
+      {showDiscardModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl animate-in fade-in zoom-in-95">
+            <div className="flex items-center gap-3 text-red-400">
+              <div className="p-2.5 rounded-2xl bg-red-500/10 border border-red-500/20">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-white">Discard Workout?</h3>
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Are you sure you want to discard this workout? All {completedSetsCount} completed sets and current progress will be permanently lost.
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setShowDiscardModal(false)}
+                className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+              >
+                Continue Workout
+              </button>
+              <button
+                onClick={handleConfirmDiscard}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white border border-red-500/30 transition-all"
+              >
+                Yes, Discard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

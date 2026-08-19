@@ -32,6 +32,9 @@ This backlog tracks upcoming feature requests, architectural improvements, and b
   * **🗺️ Anatomical Muscle Heatmap & Recovery Visualizer**: High-fidelity 2D vector anatomical body diagram (Front Anterior & Back Posterior views) with 7-day fatigue calculations, localized recovery levels (Fresh, Recovering, Fatigued), and AI readiness recommendations.
   * **Exercise Catalog**: Searchable catalog filtered by target muscle group and category with custom exercise creation.
 
+*   **📑 App-Wide Tab & Navigation Screen Persistence**: Automatically persist active groups (Nutrition vs. Strength Coach) and sub-tabs in `localStorage` so refreshing or backgrounding the app keeps the user on their active training screen.
+*   **📱 Streamlined Exercise Set Logging Table**: Refitted exercise cards by removing Warmup and Est. 1RM columns for a clean 6-column interface (`Set`, `Weight`, `Reps`, `RPE`, `Done`, `Delete`).
+*   **💾 Active Workout Session Persistence & Background Recovery**: Complete `localStorage` draft auto-saving on every set/weight change, wall-clock timer synchronization across phone lock screens and tab throttling, and accidental discard confirmation modal.
 *   **📜 AI Recipe & Prompt Preservation**: Preserve original text prompts and ingredient measurements directly when saving meals to the library, allowing users to inspect exact components to repeat recipes accurately.
 *   **▶️ Collapsible Saved Meal Recipe Cards**: Expand/collapse (`>` / `v`) saved meal prompt details in the library modal by clicking on the meal title.
 *   **⚡ Guest Mode & Local Storage Fallback**: Complete browser `localStorage` persistence for unauthenticated/offline users, with optimistic local UI state updates and automatic Firestore synchronization upon login.

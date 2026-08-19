@@ -1,18 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import { Dumbbell, Play, Plus, BookOpen, History, Award, CheckCircle2, Activity } from 'lucide-react';
 import { WorkoutLog, WorkoutExercise, Exercise } from '../types';
-import { ActiveWorkoutLogger } from './ActiveWorkoutLogger';
+import { ActiveWorkoutLogger, ACTIVE_WORKOUT_DRAFT_KEY, ActiveWorkoutDraft } from './ActiveWorkoutLogger';
 import { RoutineManager } from './RoutineManager';
 import { ExerciseLibraryModal } from './ExerciseLibraryModal';
 import { WorkoutHistory } from './WorkoutHistory';
 import { BodyHeatmapView } from './BodyHeatmapView';
 
 export const WorkoutDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'routines' | 'heatmap' | 'history' | 'library'>('routines');
+  const [activeTab, setActiveTab] = useState<'routines' | 'heatmap' | 'history' | 'library'>(() => {
+    try {
+      const savedTab = localStorage.getItem('healthcoach_workout_dashboard_tab');
+      if (savedTab && ['routines', 'heatmap', 'history', 'library'].includes(savedTab)) {
+        return savedTab as any;
+      }
+    } catch (e) {}
+    return 'routines';
+  });
+
+  const handleSelectTab = (tab: 'routines' | 'heatmap' | 'history' | 'library') => {
+    setActiveTab(tab);
+    try {
+      localStorage.setItem('healthcoach_workout_dashboard_tab', tab);
+    } catch (e) {}
+  };
   const [activeSession, setActiveSession] = useState<{
     name: string;
     exercises: WorkoutExercise[];
-  } | null>(null);
+  } | null>(() => {
+    try {
+      const saved = localStorage.getItem(ACTIVE_WORKOUT_DRAFT_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as ActiveWorkoutDraft;
+        if (parsed && (parsed.exercises || parsed.workoutName)) {
+          return {
+            name: parsed.workoutName || 'Custom Workout',
+            exercises: parsed.exercises || [],
+          };
+        }
+      }
+    } catch (e) {
+      console.error('Failed to restore active workout session draft', e);
+    }
+    return null;
+  });
 
   const [history, setHistory] = useState<WorkoutLog[]>(() => {
     const saved = localStorage.getItem('workout_history');
@@ -51,12 +82,26 @@ export const WorkoutDashboard: React.FC = () => {
   const handleFinishWorkout = (log: WorkoutLog) => {
     const updated = [log, ...history];
     saveHistory(updated);
+    try {
+      localStorage.removeItem(ACTIVE_WORKOUT_DRAFT_KEY);
+    } catch (e) {
+      console.error('Failed to clear draft on finish', e);
+    }
     setActiveSession(null);
     setSuccessToast(`🎉 ${log.name} logged successfully! (${log.totalVolumeKg.toLocaleString()} kg lifted)`);
 
     setTimeout(() => {
       setSuccessToast(null);
     }, 5000);
+  };
+
+  const handleCancelWorkout = () => {
+    try {
+      localStorage.removeItem(ACTIVE_WORKOUT_DRAFT_KEY);
+    } catch (e) {
+      console.error('Failed to clear draft on cancel', e);
+    }
+    setActiveSession(null);
   };
 
   const handleDeleteWorkout = (logId: string) => {
@@ -71,7 +116,7 @@ export const WorkoutDashboard: React.FC = () => {
         initialWorkoutName={activeSession.name}
         initialExercises={activeSession.exercises}
         onFinishWorkout={handleFinishWorkout}
-        onCancel={() => setActiveSession(null)}
+        onCancel={handleCancelWorkout}
       />
     );
   }
@@ -101,7 +146,7 @@ export const WorkoutDashboard: React.FC = () => {
       {/* Navigation Sub-Tabs */}
       <div className="flex border-b border-slate-200 gap-6 text-sm font-semibold overflow-x-auto scrollbar-none">
         <button
-          onClick={() => setActiveTab('routines')}
+          onClick={() => handleSelectTab('routines')}
           className={`pb-3 flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'routines'
               ? 'border-emerald-600 text-emerald-600 font-bold'
@@ -113,7 +158,7 @@ export const WorkoutDashboard: React.FC = () => {
         </button>
 
         <button
-          onClick={() => setActiveTab('heatmap')}
+          onClick={() => handleSelectTab('heatmap')}
           className={`pb-3 flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'heatmap'
               ? 'border-emerald-600 text-emerald-600 font-bold'
@@ -125,7 +170,7 @@ export const WorkoutDashboard: React.FC = () => {
         </button>
 
         <button
-          onClick={() => setActiveTab('history')}
+          onClick={() => handleSelectTab('history')}
           className={`pb-3 flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'history'
               ? 'border-emerald-600 text-emerald-600 font-bold'
