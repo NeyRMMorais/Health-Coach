@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, BookOpen, FileText, History, Dumbbell, Target, Layers, Calendar, CheckCircle2, Save } from 'lucide-react';
+import { X, BookOpen, FileText, History, Dumbbell, Target, Layers, Calendar, CheckCircle2, Save, Clock } from 'lucide-react';
 import { WorkoutLog, WorkoutExercise } from '../types';
 import { DEFAULT_EXERCISES } from '../data/defaultExercises';
 
@@ -13,8 +13,11 @@ interface ExerciseDetailModalProps {
     category?: string;
     description?: string;
     notes?: string;
+    restSeconds?: number;
   } | null;
   workoutHistory?: WorkoutLog[];
+  restSeconds?: number;
+  onUpdateRestSeconds?: (seconds: number) => void;
   onSaveNotes?: (notes: string) => void;
 }
 
@@ -23,6 +26,8 @@ export const ExerciseDetailModal: React.FC<ExerciseDetailModalProps> = ({
   onClose,
   exercise,
   workoutHistory = [],
+  restSeconds,
+  onUpdateRestSeconds,
   onSaveNotes,
 }) => {
   const [activeTab, setActiveTab] = useState<'instructions' | 'notes' | 'history'>('instructions');
@@ -49,6 +54,7 @@ export const ExerciseDetailModal: React.FC<ExerciseDetailModalProps> = ({
   const muscleGroup = exercise.targetMuscleGroup || matchedCatalogExercise?.targetMuscleGroup || 'Full Body';
   const category = exercise.category || matchedCatalogExercise?.category || 'Strength';
   const description = exercise.description || matchedCatalogExercise?.description || 'Focus on controlled tempo and proper form through full range of motion.';
+  const currentRest = restSeconds ?? exercise.restSeconds ?? 90;
 
   // Filter history logs for this specific exercise
   const allLogs: WorkoutLog[] = workoutHistory.length > 0 ? workoutHistory : (() => {
@@ -89,30 +95,55 @@ export const ExerciseDetailModal: React.FC<ExerciseDetailModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
       <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
         {/* Modal Header */}
-        <div className="p-5 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
-              <Dumbbell className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-white">{exercise.exerciseName}</h2>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-[11px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
-                  {muscleGroup}
-                </span>
-                <span className="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-medium">
-                  {category}
-                </span>
+        <div className="p-5 bg-slate-950/80 border-b border-slate-800 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                <Dumbbell className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-white">{exercise.exerciseName}</h2>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-[11px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
+                    {muscleGroup}
+                  </span>
+                  <span className="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-medium">
+                    {category}
+                  </span>
+                </div>
               </div>
             </div>
+
+            <button
+              onClick={onClose}
+              className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          {/* Rest Interval Dropdown (Below tags, above tabs) */}
+          <div className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded-xl px-3.5 py-2 text-xs">
+            <div className="flex items-center gap-2 text-slate-300 font-medium">
+              <Clock className="w-4 h-4 text-emerald-400" />
+              <span>Target Rest Interval:</span>
+            </div>
+            <select
+              value={currentRest}
+              onChange={(e) => onUpdateRestSeconds && onUpdateRestSeconds(parseInt(e.target.value) || 90)}
+              className="bg-slate-950 text-emerald-400 font-bold border border-slate-800 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:border-emerald-500 cursor-pointer shadow-inner"
+            >
+              <option value={30}>30s</option>
+              <option value={45}>45s</option>
+              <option value={60}>60s (1m)</option>
+              <option value={90}>90s (1.5m)</option>
+              <option value={120}>120s (2m)</option>
+              <option value={150}>150s (2.5m)</option>
+              <option value={180}>180s (3m)</option>
+              <option value={240}>240s (4m)</option>
+              <option value={300}>300s (5m)</option>
+            </select>
+          </div>
         </div>
 
         {/* Tabs Bar */}
