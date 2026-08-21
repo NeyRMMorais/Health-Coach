@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Plus, Trash2, Check, Clock, Dumbbell, Award, RotateCcw, ChevronRight, X, Volume2, AlertTriangle } from 'lucide-react';
+import { Play, Pause, Plus, Trash2, Check, Clock, Dumbbell, Award, RotateCcw, ChevronRight, ChevronDown, X, Volume2, AlertTriangle, ArrowLeftRight, GripVertical, Info, FileText, CheckCircle2 } from 'lucide-react';
 import { WorkoutLog, WorkoutExercise, ExerciseSet, Exercise, TargetMuscleGroup, ExerciseCategory } from '../types';
 import { ExerciseLibraryModal } from './ExerciseLibraryModal';
+import { ExerciseDetailModal } from './ExerciseDetailModal';
+import { ReorderExercisesModal } from './ReorderExercisesModal';
 
 export const ACTIVE_WORKOUT_DRAFT_KEY = 'healthcoach_active_workout_draft';
 
@@ -20,6 +22,7 @@ export interface ActiveWorkoutDraft {
 interface ActiveWorkoutLoggerProps {
   initialWorkoutName?: string;
   initialExercises?: WorkoutExercise[];
+  workoutHistory?: WorkoutLog[];
   onFinishWorkout: (log: WorkoutLog) => void;
   onCancel: () => void;
 }
@@ -47,6 +50,7 @@ const playCompletionBeep = () => {
 export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
   initialWorkoutName = 'Custom Workout',
   initialExercises = [],
+  workoutHistory = [],
   onFinishWorkout,
   onCancel,
 }) => {
@@ -122,9 +126,34 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
   });
   const [customRestInput, setCustomRestInput] = useState('');
 
-  // Modals
+  // Modals & Interactive States
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [showDiscardModal, setShowDiscardModal] = useState(false);
+  const [selectedExerciseForDetails, setSelectedExerciseForDetails] = useState<WorkoutExercise | null>(null);
+  const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
+  const [replacingExerciseIndex, setReplacingExerciseIndex] = useState<number | null>(null);
+  const [permanentReplacePill, setPermanentReplacePill] = useState<{
+    oldName: string;
+    newName: string;
+    oldId: string;
+    newExercise: Exercise;
+  } | null>(null);
+  const [collapsedExercises, setCollapsedExercises] = useState<Record<number, boolean>>({});
+
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleTouchStart = () => {
+    longPressTimerRef.current = setTimeout(() => {
+      setIsReorderModalOpen(true);
+    }, 600);
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
 
   // Auto-save draft helper
   const saveDraft = (overrides?: Partial<ActiveWorkoutDraft>) => {
@@ -256,6 +285,12 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
     setExercises(updated);
 
     if (willComplete) {
+      // If all sets in this exercise are now completed, automatically compact/collapse the card
+      const allDone = updated[exIndex].sets.every((s) => s.completed);
+      if (allDone) {
+        setCollapsedExercises((prev) => ({ ...prev, [exIndex]: true }));
+      }
+
       const exerciseRest = updated[exIndex].restSeconds || restDuration;
       startRestTimer(exerciseRest);
     }
@@ -269,6 +304,16 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
   ) => {
     const updated = [...exercises];
     (updated[exIndex].sets[setIndex] as any)[field] = value;
+
+    // Auto-cascade weight and reps adjustments to subsequent incomplete sets of this exercise
+    if (field === 'weight' || field === 'reps') {
+      for (let i = setIndex + 1; i < updated[exIndex].sets.length; i++) {
+        if (!updated[exIndex].sets[i].completed) {
+          (updated[exIndex].sets[i] as any)[field] = value;
+        }
+      }
+    }
+
     setExercises(updated);
   };
 
@@ -276,13 +321,15 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
     const updated = [...exercises];
     const targetEx = updated[exIndex];
     const lastSet = targetEx.sets[targetEx.sets.length - 1];
+    const isStretching = targetEx.category === 'Stretching' || targetEx.targetMuscleGroup === 'Flexibility';
+    const fallbackWeight = isStretching ? 0 : 20;
 
     const newSet: ExerciseSet = {
       id: `set-${Date.now()}`,
       setNumber: targetEx.sets.length + 1,
-      weight: lastSet ? lastSet.weight : 20,
-      reps: lastSet ? lastSet.reps : 10,
-      rpe: lastSet ? lastSet.rpe : 8,
+      weight: lastSet ? (lastSet.weight ?? fallbackWeight) : fallbackWeight,
+      reps: lastSet ? (lastSet.reps ?? 10) : 10,
+      rpe: lastSet ? (lastSet.rpe ?? 8) : 8,
       completed: false,
       isWarmup: false,
     };
@@ -305,26 +352,95 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
     setExercises(updated);
   };
 
-  const handleAddExerciseFromLibrary = (selected: Exercise) => {
-    const newWorkoutEx: WorkoutExercise = {
-      exerciseId: selected.id,
-      exerciseName: selected.name,
-      targetMuscleGroup: selected.targetMuscleGroup,
-      category: selected.category,
-      sets: [
-        {
-          id: `set-${Date.now()}-1`,
-          setNumber: 1,
-          weight: 20,
-          reps: 10,
-          rpe: 8,
-          completed: false,
-          isWarmup: false,
-        },
-      ],
-    };
+  const handleSelectExerciseFromLibrary = (selected: Exercise) => {
+    if (replacingExerciseIndex !== null) {
+      // Swapping existing exercise in place
+      const updated = [...exercises];
+      const target = updated[replacingExerciseIndex];
+      const oldName = target.exerciseName;
+      const oldId = target.exerciseId;
 
-    setExercises((prev) => [...prev, newWorkoutEx]);
+      const isStretching = selected.category === 'Stretching' || selected.targetMuscleGroup === 'Flexibility';
+      
+      target.exerciseId = selected.id;
+      target.exerciseName = selected.name;
+      target.targetMuscleGroup = selected.targetMuscleGroup;
+      target.category = selected.category;
+
+      if (isStretching) {
+        target.sets.forEach((s) => {
+          if (!s.completed && s.weight > 0) s.weight = 0;
+        });
+      }
+
+      setExercises(updated);
+      setReplacingExerciseIndex(null);
+
+      // Trigger the permanent swap pill notification
+      setPermanentReplacePill({
+        oldName,
+        newName: selected.name,
+        oldId,
+        newExercise: selected,
+      });
+    } else {
+      // Adding new exercise
+      const isStretching = selected.category === 'Stretching' || selected.targetMuscleGroup === 'Flexibility';
+      const initialWeight = isStretching ? 0 : 20;
+
+      const newWorkoutEx: WorkoutExercise = {
+        exerciseId: selected.id,
+        exerciseName: selected.name,
+        targetMuscleGroup: selected.targetMuscleGroup,
+        category: selected.category,
+        sets: [
+          {
+            id: `set-${Date.now()}-1`,
+            setNumber: 1,
+            weight: initialWeight,
+            reps: 10,
+            rpe: 8,
+            completed: false,
+            isWarmup: false,
+          },
+        ],
+      };
+
+      setExercises((prev) => [...prev, newWorkoutEx]);
+    }
+  };
+
+  const handleUpdateRoutinePermanently = () => {
+    if (!permanentReplacePill) return;
+    try {
+      const savedRoutinesRaw = localStorage.getItem('workout_routines');
+      if (savedRoutinesRaw) {
+        const routines = JSON.parse(savedRoutinesRaw);
+        let modified = false;
+        routines.forEach((r: any) => {
+          r.days?.forEach((d: any) => {
+            d.exercises?.forEach((exItem: any) => {
+              if (
+                exItem.exerciseId === permanentReplacePill.oldId ||
+                exItem.exerciseName?.toLowerCase() === permanentReplacePill.oldName.toLowerCase()
+              ) {
+                exItem.exerciseId = permanentReplacePill.newExercise.id;
+                exItem.exerciseName = permanentReplacePill.newExercise.name;
+                exItem.targetMuscleGroup = permanentReplacePill.newExercise.targetMuscleGroup;
+                exItem.category = permanentReplacePill.newExercise.category;
+                modified = true;
+              }
+            });
+          });
+        });
+        if (modified) {
+          localStorage.setItem('workout_routines', JSON.stringify(routines));
+        }
+      }
+    } catch (e) {
+      console.error('Failed to update permanent routine', e);
+    }
+    setPermanentReplacePill(null);
   };
 
   const handleFinish = () => {
@@ -386,7 +502,7 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-24">
       {/* Top Header Bar */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl sticky top-4 z-30 backdrop-blur-md bg-slate-900/90">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl sticky top-4 z-30 backdrop-blur-md bg-slate-900/95">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="space-y-1">
             <input
@@ -396,8 +512,8 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
               className="text-xl font-bold text-white bg-transparent border-b border-transparent hover:border-slate-700 focus:border-emerald-500 focus:outline-none px-1 py-0.5"
               placeholder="Workout Name"
             />
-            <div className="flex items-center gap-3 text-xs text-slate-400">
-              <span className="flex items-center gap-1">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
+              <span className="flex items-center gap-1 font-mono font-medium text-slate-300">
                 <Clock className="w-3.5 h-3.5 text-emerald-400" />
                 {formatTime(elapsedSeconds)}
               </span>
@@ -414,6 +530,49 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Reorder Exercises Button */}
+            {exercises.length > 1 && (
+              <button
+                onClick={() => setIsReorderModalOpen(true)}
+                className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+                title="Reorder Exercises"
+              >
+                <GripVertical className="w-4 h-4 text-emerald-400" />
+              </button>
+            )}
+
+            {/* Sticky Header Live Rest Timer Display */}
+            {isRestActive && restRemaining !== null && (
+              <div className="flex items-center gap-1.5 sm:gap-2 bg-emerald-950 border border-emerald-500/40 text-emerald-300 px-2.5 sm:px-3 py-1.5 rounded-xl shadow-lg animate-pulse mr-1">
+                <Clock className="w-3.5 h-3.5 text-emerald-400 animate-spin" />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 hidden sm:inline">Rest:</span>
+                <span className="font-mono font-black text-xs sm:text-sm text-white">{formatTime(restRemaining)}</span>
+                <div className="flex items-center gap-1 border-l border-emerald-800/60 pl-1.5 sm:pl-2">
+                  <button
+                    onClick={() => adjustRestTime(-10)}
+                    className="px-1.5 py-0.5 rounded bg-emerald-900/60 hover:bg-emerald-800 text-[10px] font-bold text-emerald-200"
+                    title="Subtract 10s"
+                  >
+                    -10s
+                  </button>
+                  <button
+                    onClick={() => adjustRestTime(10)}
+                    className="px-1.5 py-0.5 rounded bg-emerald-900/60 hover:bg-emerald-800 text-[10px] font-bold text-emerald-200"
+                    title="Add 10s"
+                  >
+                    +10s
+                  </button>
+                  <button
+                    onClick={cancelRestTimer}
+                    className="p-0.5 text-emerald-400 hover:text-white rounded hover:bg-emerald-900 ml-0.5"
+                    title="Dismiss timer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+
             <button
               onClick={handleTogglePause}
               className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
@@ -430,13 +589,46 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
             <button
               onClick={handleFinish}
               disabled={exercises.length === 0}
-              className="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="px-4 sm:px-5 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               Finish Workout
             </button>
           </div>
         </div>
       </div>
+
+      {/* Permanent Replacement Confirmation Pill Banner */}
+      {permanentReplacePill && (
+        <div className="bg-slate-900 border border-emerald-500/40 rounded-2xl p-4 shadow-2xl flex flex-wrap items-center justify-between gap-3 text-white animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl font-bold">
+              <ArrowLeftRight className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-emerald-400">Exercise Replaced Mid-Workout</div>
+              <div className="text-sm font-semibold text-slate-200">
+                Replaced <span className="line-through text-slate-400">{permanentReplacePill.oldName}</span> with <span className="text-emerald-300 font-bold">{permanentReplacePill.newName}</span>.
+              </div>
+              <p className="text-[11px] text-slate-400">Would you like to update this routine template permanently for future sessions?</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPermanentReplacePill(null)}
+              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition-colors"
+            >
+              This Workout Only
+            </button>
+            <button
+              onClick={handleUpdateRoutinePermanently}
+              className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold shadow-md shadow-emerald-500/20 transition-all"
+            >
+              Update Routine Permanently
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Floating Rest Timer Bar (if active) */}
       {isRestActive && restRemaining !== null && (
@@ -537,182 +729,289 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
           </button>
         </div>
       ) : (
-        exercises.map((ex, exIndex) => (
-          <div key={`${ex.exerciseId}-${exIndex}`} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-            {/* Card Header */}
-            <div className="p-4 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm">
-                  {exIndex + 1}
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-white">{ex.exerciseName}</h3>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
-                      {ex.targetMuscleGroup}
-                    </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400">
-                      {ex.category}
+        exercises.map((ex, exIndex) => {
+          const isCollapsed = !!collapsedExercises[exIndex];
+          const completedInEx = ex.sets.filter((s) => s.completed).length;
+          const totalInEx = ex.sets.length;
+          const exVolume = ex.sets.reduce((sum, s) => sum + (s.completed ? s.weight * s.reps : 0), 0);
+
+          if (isCollapsed) {
+            return (
+              <div
+                key={`${ex.exerciseId}-${exIndex}`}
+                className="bg-slate-900 border border-slate-800 hover:border-emerald-500/40 rounded-2xl p-4 shadow-xl flex items-center justify-between transition-all"
+              >
+                <div
+                  className="flex items-center gap-3 cursor-pointer flex-1"
+                  onClick={() => setCollapsedExercises((prev) => ({ ...prev, [exIndex]: false }))}
+                >
+                  <div className="w-7 h-7 rounded-lg bg-emerald-500 text-slate-950 flex items-center justify-center font-bold text-xs">
+                    <Check className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedExerciseForDetails(ex);
+                        }}
+                        className="text-sm font-bold text-white hover:text-emerald-400 transition-colors flex items-center gap-1.5"
+                      >
+                        {ex.exerciseName}
+                        <Info className="w-3.5 h-3.5 text-emerald-400/80" />
+                      </h3>
+                      {completedInEx === totalInEx && (
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
+                          Complete
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-slate-400">
+                      {completedInEx}/{totalInEx} Sets Complete • {exVolume.toLocaleString()} kg Volume
                     </span>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-3">
-                {/* Per-Exercise Rest Timer Selector */}
-                <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1 text-xs">
-                  <Clock className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-slate-400 font-medium hidden sm:inline">Rest:</span>
-                  <select
-                    value={ex.restSeconds || 90}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value) || 90;
-                      const updated = [...exercises];
-                      updated[exIndex].restSeconds = val;
-                      setExercises(updated);
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setReplacingExerciseIndex(exIndex);
+                      setIsLibraryOpen(true);
                     }}
-                    className="bg-slate-950 text-emerald-400 font-bold border border-slate-800 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-emerald-500 cursor-pointer"
+                    className="p-1.5 text-slate-400 hover:text-emerald-400 rounded-lg hover:bg-slate-800 transition-colors"
+                    title="Replace Exercise"
                   >
-                    <option value={30}>30s</option>
-                    <option value={45}>45s</option>
-                    <option value={60}>60s (1m)</option>
-                    <option value={90}>90s (1.5m)</option>
-                    <option value={120}>120s (2m)</option>
-                    <option value={150}>150s (2.5m)</option>
-                    <option value={180}>180s (3m)</option>
-                    <option value={240}>240s (4m)</option>
-                    <option value={300}>300s (5m)</option>
-                  </select>
+                    <ArrowLeftRight className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setCollapsedExercises((prev) => ({ ...prev, [exIndex]: false }))}
+                    className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors"
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                    <span>Expand</span>
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div key={`${ex.exerciseId}-${exIndex}`} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+              {/* Card Header */}
+              <div
+                className="p-4 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between select-none"
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+                onMouseDown={handleTouchStart}
+                onMouseUp={handleTouchEnd}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm">
+                    {exIndex + 1}
+                  </div>
+                  <div>
+                    <h3
+                      onClick={() => setSelectedExerciseForDetails(ex)}
+                      className="text-base font-bold text-white hover:text-emerald-400 transition-colors cursor-pointer flex items-center gap-1.5 group"
+                      title="Click to view Instructions, Notes & History"
+                    >
+                      {ex.exerciseName}
+                      <Info className="w-3.5 h-3.5 text-emerald-400 opacity-60 group-hover:opacity-100 transition-opacity" />
+                    </h3>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
+                        {ex.targetMuscleGroup}
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400">
+                        {ex.category}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
+                <div className="flex items-center gap-2 sm:gap-3">
+                  {/* Per-Exercise Rest Timer Selector */}
+                  <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1 text-xs">
+                    <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-slate-400 font-medium hidden sm:inline">Rest:</span>
+                    <select
+                      value={ex.restSeconds || 90}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 90;
+                        const updated = [...exercises];
+                        updated[exIndex].restSeconds = val;
+                        setExercises(updated);
+                      }}
+                      className="bg-slate-950 text-emerald-400 font-bold border border-slate-800 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-emerald-500 cursor-pointer"
+                    >
+                      <option value={30}>30s</option>
+                      <option value={45}>45s</option>
+                      <option value={60}>60s (1m)</option>
+                      <option value={90}>90s (1.5m)</option>
+                      <option value={120}>120s (2m)</option>
+                      <option value={150}>150s (2.5m)</option>
+                      <option value={180}>180s (3m)</option>
+                      <option value={240}>240s (4m)</option>
+                      <option value={300}>300s (5m)</option>
+                    </select>
+                  </div>
+
+                  {/* Replace Exercise Button */}
+                  <button
+                    onClick={() => {
+                      setReplacingExerciseIndex(exIndex);
+                      setIsLibraryOpen(true);
+                    }}
+                    className="p-2 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded-lg transition-colors"
+                    title="Replace / Substitute Exercise"
+                  >
+                    <ArrowLeftRight className="w-4 h-4" />
+                  </button>
+
+                  {/* Collapse Button */}
+                  <button
+                    onClick={() => setCollapsedExercises((prev) => ({ ...prev, [exIndex]: true }))}
+                    className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                    title="Compact / Collapse Exercise"
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+
+                  <button
+                    onClick={() => handleRemoveExercise(exIndex)}
+                    className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                    title="Remove Exercise"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Set Table */}
+              <div className="p-4 overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="text-slate-400 border-b border-slate-800 pb-2">
+                      <th className="pb-2 w-12 text-center">Set</th>
+                      <th className="pb-2">Weight (kg)</th>
+                      <th className="pb-2">Reps</th>
+                      <th className="pb-2 w-20">RPE (1-10)</th>
+                      <th className="pb-2 w-16 text-center">Done</th>
+                      <th className="pb-2 w-10"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {ex.sets.map((s, setIndex) => {
+                      return (
+                        <tr
+                          key={s.id}
+                          className={`transition-colors ${
+                            s.completed ? 'bg-emerald-950/20 text-emerald-100' : 'hover:bg-slate-850/50'
+                          }`}
+                        >
+                          {/* Set Number */}
+                          <td className="py-2.5 text-center font-bold text-slate-300">
+                            {s.setNumber}
+                          </td>
+
+                          {/* Weight */}
+                          <td className="py-2.5 pr-2">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.5"
+                              value={s.weight !== undefined && s.weight !== null ? s.weight : ''}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                                handleUpdateSet(exIndex, setIndex, 'weight', isNaN(val) ? 0 : val);
+                              }}
+                              className="w-20 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-white font-semibold focus:outline-none focus:border-emerald-500"
+                            />
+                          </td>
+
+                          {/* Reps */}
+                          <td className="py-2.5 pr-2">
+                            <input
+                              type="number"
+                              min="0"
+                              value={s.reps !== undefined && s.reps !== null ? s.reps : ''}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? 0 : parseInt(e.target.value);
+                                handleUpdateSet(exIndex, setIndex, 'reps', isNaN(val) ? 0 : val);
+                              }}
+                              className="w-16 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-white font-semibold focus:outline-none focus:border-emerald-500"
+                            />
+                          </td>
+
+                          {/* RPE */}
+                          <td className="py-2.5 pr-2">
+                            <select
+                              value={s.rpe || 8}
+                              onChange={(e) =>
+                                handleUpdateSet(exIndex, setIndex, 'rpe', parseInt(e.target.value) || 8)
+                              }
+                              className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs font-semibold text-emerald-400 focus:outline-none focus:border-emerald-500 cursor-pointer shadow-inner"
+                              title={`@${s.rpe || 8} (${10 - (s.rpe || 8)} RIR)`}
+                            >
+                              <option value={6} className="bg-slate-900 text-slate-200">@6 (4 RIR)</option>
+                              <option value={7} className="bg-slate-900 text-slate-200">@7 (3 RIR)</option>
+                              <option value={8} className="bg-slate-900 text-emerald-400 font-bold">@8 (2 RIR)</option>
+                              <option value={9} className="bg-slate-900 text-amber-400 font-bold">@9 (1 RIR)</option>
+                              <option value={10} className="bg-slate-900 text-red-400 font-bold">@10 (Max)</option>
+                            </select>
+                          </td>
+
+                          {/* Complete Checkbox */}
+                          <td className="py-2.5 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleSetComplete(exIndex, setIndex)}
+                              className={`w-7 h-7 rounded-lg flex items-center justify-center mx-auto transition-all ${
+                                s.completed
+                                  ? 'bg-emerald-500 text-slate-950 font-bold shadow-md shadow-emerald-500/30'
+                                  : 'bg-slate-800 hover:bg-slate-700 text-slate-400'
+                              }`}
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                          </td>
+
+                          {/* Delete Set */}
+                          <td className="py-2.5 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteSet(exIndex, setIndex)}
+                              className="text-slate-600 hover:text-red-400 transition-colors p-1"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+
                 <button
-                  onClick={() => handleRemoveExercise(exIndex)}
-                  className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                  title="Remove Exercise"
+                  onClick={() => handleAddSet(exIndex)}
+                  className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-emerald-400 text-xs font-semibold transition-colors"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Plus className="w-3.5 h-3.5" />
+                  Add Set
                 </button>
               </div>
             </div>
-
-            {/* Set Table */}
-            <div className="p-4 overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="text-slate-400 border-b border-slate-800 pb-2">
-                    <th className="pb-2 w-12 text-center">Set</th>
-                    <th className="pb-2">Weight (kg)</th>
-                    <th className="pb-2">Reps</th>
-                    <th className="pb-2 w-20">RPE (1-10)</th>
-                    <th className="pb-2 w-16 text-center">Done</th>
-                    <th className="pb-2 w-10"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {ex.sets.map((s, setIndex) => {
-                    return (
-                      <tr
-                        key={s.id}
-                        className={`transition-colors ${
-                          s.completed ? 'bg-emerald-950/20 text-emerald-100' : 'hover:bg-slate-850/50'
-                        }`}
-                      >
-                        {/* Set Number */}
-                        <td className="py-2.5 text-center font-bold text-slate-300">
-                          {s.setNumber}
-                        </td>
-
-                        {/* Weight */}
-                        <td className="py-2.5 pr-2">
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.5"
-                            value={s.weight || ''}
-                            onChange={(e) =>
-                              handleUpdateSet(exIndex, setIndex, 'weight', parseFloat(e.target.value) || 0)
-                            }
-                            className="w-20 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-white font-semibold focus:outline-none focus:border-emerald-500"
-                          />
-                        </td>
-
-                        {/* Reps */}
-                        <td className="py-2.5 pr-2">
-                          <input
-                            type="number"
-                            min="0"
-                            value={s.reps || ''}
-                            onChange={(e) =>
-                              handleUpdateSet(exIndex, setIndex, 'reps', parseInt(e.target.value) || 0)
-                            }
-                            className="w-16 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-white font-semibold focus:outline-none focus:border-emerald-500"
-                          />
-                        </td>
-
-                        {/* RPE */}
-                        <td className="py-2.5 pr-2">
-                          <select
-                            value={s.rpe || 8}
-                            onChange={(e) =>
-                              handleUpdateSet(exIndex, setIndex, 'rpe', parseInt(e.target.value) || 8)
-                            }
-                            className="w-16 bg-slate-950 border border-slate-800 rounded-lg px-1.5 py-1.5 text-slate-300 focus:outline-none focus:border-emerald-500"
-                          >
-                            {[6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10].map((v) => (
-                              <option key={v} value={v}>
-                                @{v}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-
-                        {/* Complete Checkbox */}
-                        <td className="py-2.5 text-center">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleSetComplete(exIndex, setIndex)}
-                            className={`w-7 h-7 rounded-lg flex items-center justify-center mx-auto transition-all ${
-                              s.completed
-                                ? 'bg-emerald-500 text-slate-950 font-bold shadow-md shadow-emerald-500/30'
-                                : 'bg-slate-800 hover:bg-slate-700 text-slate-400'
-                            }`}
-                          >
-                            <Check className="w-4 h-4" />
-                          </button>
-                        </td>
-
-                        {/* Delete Set */}
-                        <td className="py-2.5 text-center">
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteSet(exIndex, setIndex)}
-                            className="text-slate-600 hover:text-red-400 transition-colors p-1"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-
-              <button
-                onClick={() => handleAddSet(exIndex)}
-                className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-emerald-400 text-xs font-semibold transition-colors"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Add Set
-              </button>
-            </div>
-          </div>
-        ))
+          );
+        })
       )}
 
       {/* Bottom Add Exercise Button */}
       {exercises.length > 0 && (
         <button
-          onClick={() => setIsLibraryOpen(true)}
+          onClick={() => {
+            setReplacingExerciseIndex(null);
+            setIsLibraryOpen(true);
+          }}
           className="w-full py-3 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/50 rounded-2xl text-emerald-400 text-xs font-bold flex items-center justify-center gap-2 transition-all"
         >
           <Plus className="w-4 h-4" />
@@ -723,8 +1022,38 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
       {/* Exercise Selector Modal */}
       <ExerciseLibraryModal
         isOpen={isLibraryOpen}
-        onClose={() => setIsLibraryOpen(false)}
-        onSelectExercise={handleAddExerciseFromLibrary}
+        onClose={() => {
+          setIsLibraryOpen(false);
+          setReplacingExerciseIndex(null);
+        }}
+        onSelectExercise={handleSelectExerciseFromLibrary}
+      />
+
+      {/* 3-Tab Exercise Detail Modal (Instructions, Notes, History) */}
+      <ExerciseDetailModal
+        isOpen={selectedExerciseForDetails !== null}
+        onClose={() => setSelectedExerciseForDetails(null)}
+        exercise={selectedExerciseForDetails}
+        workoutHistory={workoutHistory}
+        onSaveNotes={(noteText) => {
+          if (selectedExerciseForDetails) {
+            const updated = exercises.map((item) =>
+              item.exerciseId === selectedExerciseForDetails.exerciseId
+                ? { ...item, notes: noteText }
+                : item
+            );
+            setExercises(updated);
+          }
+        }}
+      />
+
+      {/* Reorder Exercises Modal */}
+      <ReorderExercisesModal
+        isOpen={isReorderModalOpen}
+        onClose={() => setIsReorderModalOpen(false)}
+        exercises={exercises}
+        title="Reorder Workout Exercises"
+        onSaveOrder={(reordered) => setExercises(reordered)}
       />
 
       {/* Discard Workout Confirmation Modal */}

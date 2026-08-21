@@ -115,6 +115,7 @@ export const WorkoutDashboard: React.FC = () => {
       <ActiveWorkoutLogger
         initialWorkoutName={activeSession.name}
         initialExercises={activeSession.exercises}
+        workoutHistory={history}
         onFinishWorkout={handleFinishWorkout}
         onCancel={handleCancelWorkout}
       />
@@ -208,6 +209,9 @@ export const WorkoutDashboard: React.FC = () => {
         isOpen={isLibraryOpen}
         onClose={() => setIsLibraryOpen(false)}
         onSelectExercise={(exercise) => {
+          const isStretching = exercise.category === 'Stretching' || exercise.targetMuscleGroup === 'Flexibility';
+          const initialWeight = isStretching ? 0 : 20;
+
           // If no active session, start a workout with this exercise
           setActiveSession({
             name: `${exercise.name} Session`,
@@ -221,7 +225,7 @@ export const WorkoutDashboard: React.FC = () => {
                   {
                     id: `set-${Date.now()}-1`,
                     setNumber: 1,
-                    weight: 20,
+                    weight: initialWeight,
                     reps: 10,
                     rpe: 8,
                     completed: false,

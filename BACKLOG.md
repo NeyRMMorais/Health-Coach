@@ -32,6 +32,17 @@ This backlog tracks upcoming feature requests, architectural improvements, and b
   * **🗺️ Anatomical Muscle Heatmap & Recovery Visualizer**: High-fidelity 2D vector anatomical body diagram (Front Anterior & Back Posterior views) with 7-day fatigue calculations, localized recovery levels (Fresh, Recovering, Fatigued), and AI readiness recommendations.
   * **Exercise Catalog**: Searchable catalog filtered by target muscle group and category with custom exercise creation.
 
+*   **📖 3-Tab Exercise Details Modal (Instructions, Notes, History)**: Clicking any exercise title opens a comprehensive modal with 3 specialized tabs:
+    * **Instructions**: Step-by-step form cues, target muscle groups, and movement execution tips.
+    * **Notes**: Persistent personal setup notes (grip, seat pin, bench angle) auto-remembered across all workouts.
+    * **History**: Chronological log of past sessions with set-by-set weight, reps, RPE, and 1RM metrics.
+*   **🖐️ Drag & Hold Exercise Reordering Modal**: Dedicated reordering screen with draggable cards and instant up/down controls in both the Routine Editor and Active Workout session.
+*   **🔀 In-Workout Exercise Replacement with Permanent Swap Pill**: Swap exercises mid-workout with an instant confirmation pill banner offering to update the routine template permanently or keep it for the current workout only.
+*   **🔽 Auto-Collapsing Completed Exercise Cards**: Exercise cards automatically compact into a sleek completed summary bar once all sets are finished, with 1-click expand/collapse.
+*   **⏱️ Sticky Top Bar Live Rest Timer**: Integrated a real-time resting countdown and quick adjustment controls (`-10s` / `+10s` / dismiss) in the sticky top header so rest intervals remain visible and manageable while scrolling through exercises.
+*   **🔁 Auto-Replicating Set Weight & Reps Cascade**: Adjusting weight or reps on any set automatically replicates the updated values down to all subsequent incomplete sets in that exercise.
+*   **🔢 Sleek Integer @RPE Selector**: Redesigned the RPE selector to a compact dark-themed component using standardized whole integers (`@6` to `@10`) with Reps In Reserve (RIR) guidance.
+*   **0️⃣ 0 kg Bodyweight & Stretching Support**: Fixed input binding so `0 kg` weight does not blank out, and automatically default stretching and mobility exercises to `0 kg`.
 *   **📑 App-Wide Tab & Navigation Screen Persistence**: Automatically persist active groups (Nutrition vs. Strength Coach) and sub-tabs in `localStorage` so refreshing or backgrounding the app keeps the user on their active training screen.
 *   **📱 Streamlined Exercise Set Logging Table**: Refitted exercise cards by removing Warmup and Est. 1RM columns for a clean 6-column interface (`Set`, `Weight`, `Reps`, `RPE`, `Done`, `Delete`).
 *   **💾 Active Workout Session Persistence & Background Recovery**: Complete `localStorage` draft auto-saving on every set/weight change, wall-clock timer synchronization across phone lock screens and tab throttling, and accidental discard confirmation modal.

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Plus, Dumbbell, Trash2, Edit, Check, ChevronRight, X, Calendar, HeartPulse, Flame, Sun, Layers, Sparkles } from 'lucide-react';
+import { Play, Plus, Dumbbell, Trash2, Edit, Check, ChevronRight, X, Calendar, HeartPulse, Flame, Sun, Layers, Sparkles, GripVertical } from 'lucide-react';
 import { collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { WorkoutRoutine, RoutineDay, RoutineDayType, WorkoutExercise, Exercise, TargetMuscleGroup } from '../types';
 import { DEFAULT_ROUTINES } from '../data/defaultRoutines';
 import { ExerciseLibraryModal } from './ExerciseLibraryModal';
-
 import { AiWorkoutArchitectModal } from './AiWorkoutArchitectModal';
+import { ReorderExercisesModal } from './ReorderExercisesModal';
 
 interface RoutineManagerProps {
   onStartWorkoutFromRoutine: (routineName: string, exercises: WorkoutExercise[]) => void;
@@ -160,10 +160,9 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
   }, []);
 
   // Track which day is currently being edited in the modal
-
-  // Track which day is currently being edited in the modal
   const [activeEditingDayIndex, setActiveEditingDayIndex] = useState<number>(0);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
 
   const handleAddDay = () => {
     const nextNum = days.length + 1;
@@ -313,10 +312,13 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
     if (!day.exercises || day.exercises.length === 0) return;
 
     const initialWorkoutExercises: WorkoutExercise[] = day.exercises.map((item) => {
+      const isStretching = item.category === 'Stretching' || item.targetMuscleGroup === 'Flexibility';
+      const initialWeight = isStretching ? 0 : 20;
+
       const sets = Array.from({ length: item.targetSets }).map((_, idx) => ({
         id: `set-${Date.now()}-${idx}`,
         setNumber: idx + 1,
-        weight: 20,
+        weight: initialWeight,
         reps: item.targetReps,
         rpe: 8,
         completed: false,
@@ -558,13 +560,24 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
                       <span className="text-xs font-semibold text-slate-300">
                         Exercises ({days[activeEditingDayIndex].exercises?.length || 0})
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => setIsLibraryOpen(true)}
-                        className="text-xs text-emerald-400 hover:underline flex items-center gap-1 font-semibold"
-                      >
-                        <Plus className="w-3.5 h-3.5" /> Add Exercise to Day {days[activeEditingDayIndex].dayNumber}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {days[activeEditingDayIndex].exercises && days[activeEditingDayIndex].exercises!.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setIsReorderModalOpen(true)}
+                            className="text-xs text-slate-400 hover:text-white flex items-center gap-1 font-semibold px-2 py-1 bg-slate-900 border border-slate-800 rounded-lg hover:border-slate-700 transition-colors"
+                          >
+                            <GripVertical className="w-3.5 h-3.5 text-emerald-400" /> Reorder
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setIsLibraryOpen(true)}
+                          className="text-xs text-emerald-400 hover:underline flex items-center gap-1 font-semibold"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Add Exercise to Day {days[activeEditingDayIndex].dayNumber}
+                        </button>
+                      </div>
                     </div>
 
                     {(!days[activeEditingDayIndex].exercises || days[activeEditingDayIndex].exercises!.length === 0) ? (
@@ -793,6 +806,19 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
         isOpen={isAiArchitectOpen}
         onClose={() => setIsAiArchitectOpen(false)}
         onSaveRoutine={handleAiRoutineSave}
+      />
+
+      {/* Reorder Exercises Modal */}
+      <ReorderExercisesModal
+        isOpen={isReorderModalOpen}
+        onClose={() => setIsReorderModalOpen(false)}
+        exercises={days[activeEditingDayIndex]?.exercises || []}
+        title={`Reorder Day ${days[activeEditingDayIndex]?.dayNumber} Exercises`}
+        onSaveOrder={(reordered) => {
+          const updated = [...days];
+          updated[activeEditingDayIndex].exercises = reordered;
+          setDays(updated);
+        }}
       />
     </div>
   );
