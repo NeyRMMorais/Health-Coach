@@ -3,6 +3,7 @@ import { Exercise } from '../types';
 export const DEFAULT_EXERCISES: Exercise[] = [
   // Chest
   { id: 'bench-press-barbell', name: 'Barbell Bench Press', targetMuscleGroup: 'Chest', category: 'Barbell', description: 'Flat bench press with barbell for overall chest strength.' },
+  { id: 'incline-barbell-bench-press', name: 'Incline Barbell Bench Press', targetMuscleGroup: 'Chest', category: 'Barbell', description: 'Incline angle bench press with barbell emphasizing clavicular upper chest.' },
   { id: 'incline-dumbbell-press', name: 'Incline Dumbbell Press', targetMuscleGroup: 'Chest', category: 'Dumbbell', description: 'Upper chest focus using adjustable incline bench.' },
   { id: 'chest-fly-cable', name: 'Cable Chest Fly', targetMuscleGroup: 'Chest', category: 'Cable', description: 'Constant tension chest isolation flyes.' },
   { id: 'push-up', name: 'Push-Up', targetMuscleGroup: 'Chest', category: 'Bodyweight', description: 'Bodyweight chest and core builder.' },

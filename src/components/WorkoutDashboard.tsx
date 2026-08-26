@@ -8,12 +8,14 @@ import { RoutineManager } from './RoutineManager';
 import { ExerciseLibraryModal } from './ExerciseLibraryModal';
 import { WorkoutHistory } from './WorkoutHistory';
 import { BodyHeatmapView } from './BodyHeatmapView';
+import { WorkoutCompletionModal } from './WorkoutCompletionModal';
 
 interface WorkoutDashboardProps {
   user?: any;
 }
 
 export const WorkoutDashboard: React.FC<WorkoutDashboardProps> = ({ user: propUser }) => {
+  const [recapLog, setRecapLog] = useState<WorkoutLog | null>(null);
   const [activeTab, setActiveTab] = useState<'routines' | 'heatmap' | 'history' | 'library'>(() => {
     try {
       const savedTab = localStorage.getItem('healthcoach_workout_dashboard_tab');
@@ -191,11 +193,7 @@ export const WorkoutDashboard: React.FC<WorkoutDashboardProps> = ({ user: propUs
       console.error('Failed to clear draft on finish', e);
     }
     setActiveSession(null);
-    setSuccessToast(`🎉 ${finalizedLog.name} logged successfully! (${finalizedLog.totalVolumeKg.toLocaleString()} kg lifted)`);
-
-    setTimeout(() => {
-      setSuccessToast(null);
-    }, 5000);
+    setRecapLog(finalizedLog);
   };
 
   const handleCancelWorkout = () => {
@@ -305,7 +303,10 @@ export const WorkoutDashboard: React.FC<WorkoutDashboardProps> = ({ user: propUs
 
       {/* Tab Content */}
       {activeTab === 'routines' && (
-        <RoutineManager onStartWorkoutFromRoutine={handleStartWorkoutFromRoutine} />
+        <RoutineManager
+          onStartWorkoutFromRoutine={handleStartWorkoutFromRoutine}
+          workoutHistory={history}
+        />
       )}
 
       {activeTab === 'heatmap' && (
@@ -347,6 +348,17 @@ export const WorkoutDashboard: React.FC<WorkoutDashboardProps> = ({ user: propUs
               },
             ],
           });
+        }}
+      />
+
+      {/* Post-Workout Closing Celebration & Stats Recap Modal */}
+      <WorkoutCompletionModal
+        isOpen={!!recapLog}
+        workoutLog={recapLog}
+        onClose={() => setRecapLog(null)}
+        onViewHistory={() => {
+          setRecapLog(null);
+          handleSelectTab('history');
         }}
       />
     </div>

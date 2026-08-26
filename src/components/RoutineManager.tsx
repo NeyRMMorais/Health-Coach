@@ -10,9 +10,60 @@ import { ReorderExercisesModal } from './ReorderExercisesModal';
 
 interface RoutineManagerProps {
   onStartWorkoutFromRoutine: (routineName: string, exercises: WorkoutExercise[]) => void;
+  workoutHistory?: WorkoutLog[];
 }
 
-export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFromRoutine }) => {
+export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFromRoutine, workoutHistory = [] }) => {
+  // Helper to determine the next recommended workout day based on history
+  const getSuggestedNextDayIndex = (routine: WorkoutRoutine): number => {
+    const daysList = Array.isArray(routine.days) ? routine.days : [];
+    if (daysList.length <= 1) return 0;
+    if (!workoutHistory || workoutHistory.length === 0) return 0;
+
+    // Find the latest workout that matched this routine
+    const matchingWorkout = workoutHistory.find((log) => {
+      if (log.name.startsWith(routine.title)) return true;
+      const logExerciseNames = new Set(log.exercises.map((e) => e.exerciseName));
+      return daysList.some((d) =>
+        d.exercises?.some((e) => logExerciseNames.has(e.exerciseName))
+      );
+    });
+
+    if (!matchingWorkout) return 0;
+
+    let lastCompletedIndex = -1;
+    for (let i = 0; i < daysList.length; i++) {
+      const d = daysList[i];
+      if (
+        matchingWorkout.name.includes(d.dayName) ||
+        matchingWorkout.name.includes(`Day ${d.dayNumber}`)
+      ) {
+        lastCompletedIndex = i;
+        break;
+      }
+    }
+
+    if (lastCompletedIndex === -1) {
+      let maxOverlap = 0;
+      daysList.forEach((d, idx) => {
+        if (d.type === 'workout' && d.exercises) {
+          const overlap = d.exercises.filter((ex) =>
+            matchingWorkout.exercises.some((e) => e.exerciseName === ex.exerciseName)
+          ).length;
+          if (overlap > maxOverlap) {
+            maxOverlap = overlap;
+            lastCompletedIndex = idx;
+          }
+        }
+      });
+    }
+
+    if (lastCompletedIndex >= 0) {
+      return (lastCompletedIndex + 1) % daysList.length;
+    }
+
+    return 0;
+  };
   // Load saved routines or defaults (ignoring deleted templates stored in localStorage)
   const [routines, setRoutines] = useState<WorkoutRoutine[]>(() => {
     const savedDeleted = localStorage.getItem('deleted_routine_ids');
@@ -741,51 +792,69 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
                       Schedule Days:
                     </span>
 
-                    {daysList.map((day) => (
-                      <div
-                        key={day.id}
-                        className="p-3 bg-slate-950/80 border border-slate-800 rounded-xl flex flex-wrap items-center justify-between gap-2"
-                      >
-                        <div className="space-y-0.5">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-white">{day.dayName}</span>
-                            <span
-                              className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
-                                day.type === 'workout'
-                                  ? 'bg-emerald-500/20 text-emerald-300'
-                                  : day.type === 'cardio'
-                                  ? 'bg-amber-500/20 text-amber-300'
-                                  : 'bg-blue-500/20 text-blue-300'
-                              }`}
-                            >
-                              {day.type}
-                            </span>
+                    {daysList.map((day, dIdx) => {
+                      const isUpNext = dIdx === getSuggestedNextDayIndex(routine) && day.type === 'workout';
+
+                      return (
+                        <div
+                          key={day.id}
+                          className={`p-3 rounded-xl flex flex-wrap items-center justify-between gap-2 transition-all ${
+                            isUpNext
+                              ? 'bg-slate-950 border-2 border-emerald-500/60 shadow-lg shadow-emerald-500/10'
+                              : 'bg-slate-950/80 border border-slate-800'
+                          }`}
+                        >
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-white">{day.dayName}</span>
+                              <span
+                                className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                                  day.type === 'workout'
+                                    ? 'bg-emerald-500/20 text-emerald-300'
+                                    : day.type === 'cardio'
+                                    ? 'bg-amber-500/20 text-amber-300'
+                                    : 'bg-blue-500/20 text-blue-300'
+                                }`}
+                              >
+                                {day.type}
+                              </span>
+
+                              {isUpNext && (
+                                <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-400 text-slate-950 font-black uppercase tracking-wider inline-flex items-center gap-1 shadow-sm animate-pulse">
+                                  👉 Up Next
+                                </span>
+                              )}
+                            </div>
+
+                            {day.type === 'workout' && day.exercises && (
+                              <div className="text-[11px] text-slate-400">
+                                {day.exercises.length} exercises (
+                                {day.exercises.slice(0, 3).map((e) => e.exerciseName).join(', ')}
+                                {day.exercises.length > 3 ? '...' : ''})
+                              </div>
+                            )}
+
+                            {(day.type === 'rest' || day.type === 'cardio') && day.notes && (
+                              <div className="text-[11px] text-slate-400 italic">{day.notes}</div>
+                            )}
                           </div>
 
-                          {day.type === 'workout' && day.exercises && (
-                            <div className="text-[11px] text-slate-400">
-                              {day.exercises.length} exercises (
-                              {day.exercises.slice(0, 3).map((e) => e.exerciseName).join(', ')}
-                              {day.exercises.length > 3 ? '...' : ''})
-                            </div>
-                          )}
-
-                          {(day.type === 'rest' || day.type === 'cardio') && day.notes && (
-                            <div className="text-[11px] text-slate-400 italic">{day.notes}</div>
+                          {day.type === 'workout' && day.exercises && day.exercises.length > 0 && (
+                            <button
+                              onClick={() => handleLaunchDayWorkout(routine.title, day)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 shadow-md transition-all shrink-0 ${
+                                isUpNext
+                                  ? 'bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-black shadow-emerald-500/20 scale-[1.02]'
+                                  : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
+                              }`}
+                            >
+                              <Play className="w-3.5 h-3.5 fill-slate-950" />
+                              Start Day {day.dayNumber}
+                            </button>
                           )}
                         </div>
-
-                        {day.type === 'workout' && day.exercises && day.exercises.length > 0 && (
-                          <button
-                            onClick={() => handleLaunchDayWorkout(routine.title, day)}
-                            className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold flex items-center gap-1 shadow-md transition-all shrink-0"
-                          >
-                            <Play className="w-3.5 h-3.5 fill-slate-950" />
-                            Start Day {day.dayNumber}
-                          </button>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
