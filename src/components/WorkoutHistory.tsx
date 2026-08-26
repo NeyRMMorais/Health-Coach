@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Calendar, Clock, Dumbbell, Award, Flame, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Calendar, Clock, Dumbbell, Award, Flame, Trash2, ChevronDown, ChevronUp, AlertTriangle, X } from 'lucide-react';
 import { WorkoutLog } from '../types';
 
 interface WorkoutHistoryProps {
@@ -9,6 +10,7 @@ interface WorkoutHistoryProps {
 
 export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ history, onDeleteWorkout }) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [pendingDeleteWorkout, setPendingDeleteWorkout] = useState<WorkoutLog | null>(null);
 
   const totalVolumeAllTime = history.reduce((acc, h) => acc + (h.totalVolumeKg || 0), 0);
   const totalMinutesAllTime = history.reduce((acc, h) => acc + (h.durationMinutes || 0), 0);
@@ -102,13 +104,7 @@ export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ history, onDelet
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (
-                          window.confirm(
-                            `Are you sure you want to delete "${log.name}" (${log.date}) from your workout history? This action cannot be undone.`
-                          )
-                        ) {
-                          onDeleteWorkout(log.id);
-                        }
+                        setPendingDeleteWorkout(log);
                       }}
                       className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
                       title="Delete Workout Log"
@@ -159,6 +155,91 @@ export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ history, onDelet
           })
         )}
       </div>
+
+      {/* Custom In-App Styled Confirmation Modal */}
+      <AnimatePresence>
+        {pendingDeleteWorkout && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 15 }}
+              transition={{ type: 'spring', duration: 0.35 }}
+              className="relative w-full max-w-md bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border border-red-500/30 rounded-3xl shadow-2xl overflow-hidden text-white p-6 md:p-7 space-y-5"
+            >
+              {/* Header Gradient Ambient Glow */}
+              <div className="absolute top-0 inset-x-0 h-28 bg-gradient-to-b from-red-500/15 to-transparent pointer-events-none" />
+
+              {/* Close Icon */}
+              <button
+                onClick={() => setPendingDeleteWorkout(null)}
+                className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition z-10"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-start gap-3.5 relative z-10">
+                <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl shrink-0">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">Delete Workout Log?</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    This action is permanent and cannot be reversed.
+                  </p>
+                </div>
+              </div>
+
+              {/* Session Summary Pill */}
+              <div className="p-4 bg-slate-950/70 border border-slate-800/80 rounded-2xl space-y-2 relative z-10">
+                <div className="font-bold text-sm text-white flex items-center justify-between">
+                  <span>{pendingDeleteWorkout.name}</span>
+                  <span className="text-xs text-slate-400 font-normal">{pendingDeleteWorkout.date}</span>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-slate-400">
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 text-blue-400" />
+                    {pendingDeleteWorkout.durationMinutes} mins
+                  </span>
+                  <span>•</span>
+                  <span className="flex items-center gap-1">
+                    <Dumbbell className="w-3.5 h-3.5 text-purple-400" />
+                    {pendingDeleteWorkout.totalVolumeKg.toLocaleString()} kg
+                  </span>
+                  <span>•</span>
+                  <span className="text-slate-400">
+                    {pendingDeleteWorkout.exercises.length} exercises
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-2 relative z-10">
+                <button
+                  type="button"
+                  onClick={() => setPendingDeleteWorkout(null)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-300 bg-slate-800 hover:bg-slate-700 hover:text-white border border-slate-700 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (pendingDeleteWorkout) {
+                      onDeleteWorkout(pendingDeleteWorkout.id);
+                      setPendingDeleteWorkout(null);
+                    }
+                  }}
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 shadow-lg shadow-red-500/20 transition flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Delete Workout
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
