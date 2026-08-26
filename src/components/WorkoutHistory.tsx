@@ -102,7 +102,13 @@ export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ history, onDelet
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        onDeleteWorkout(log.id);
+                        if (
+                          window.confirm(
+                            `Are you sure you want to delete "${log.name}" (${log.date}) from your workout history? This action cannot be undone.`
+                          )
+                        ) {
+                          onDeleteWorkout(log.id);
+                        }
                       }}
                       className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
                       title="Delete Workout Log"
