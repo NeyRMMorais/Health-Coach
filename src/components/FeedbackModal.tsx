@@ -1,19 +1,74 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Send, CheckCircle2, MessageSquare, AlertCircle, RefreshCw } from 'lucide-react';
+import { X, Send, CheckCircle2, MessageSquare, AlertCircle, RefreshCw, Paperclip, Image as ImageIcon, Trash2 } from 'lucide-react';
 
 interface FeedbackModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (feedbackData: { type: 'bug' | 'improvement'; text: string }) => Promise<void>;
+  onSubmit: (feedbackData: { type: 'bug' | 'improvement'; text: string; imageBase64?: string }) => Promise<void>;
 }
 
 export default function FeedbackModal({ isOpen, onClose, onSubmit }: FeedbackModalProps) {
   const [type, setType] = useState<'bug' | 'improvement'>('bug');
   const [text, setText] = useState<string>('');
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<boolean>(false);
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Compress image to reasonable resolution/size for Firestore
+  const processImageFile = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload a valid image file (PNG, JPG, WEBP).');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image size exceeds 5MB. Please choose a smaller image.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxDim = 1024;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          setSelectedImage(compressedDataUrl);
+          setError(null);
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files[0]) {
+      processImageFile(files[0]);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,9 +82,10 @@ export default function FeedbackModal({ isOpen, onClose, onSubmit }: FeedbackMod
     try {
       setIsSubmitting(true);
       setError(null);
-      await onSubmit({ type, text });
+      await onSubmit({ type, text, imageBase64: selectedImage || undefined });
       setSuccess(true);
       setText('');
+      setSelectedImage(null);
       // Auto close after 2.5s
       setTimeout(() => {
         setSuccess(false);
@@ -46,6 +102,7 @@ export default function FeedbackModal({ isOpen, onClose, onSubmit }: FeedbackMod
     if (isSubmitting) return;
     setError(null);
     setSuccess(false);
+    setSelectedImage(null);
     onClose();
   };
 
@@ -68,7 +125,7 @@ export default function FeedbackModal({ isOpen, onClose, onSubmit }: FeedbackMod
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 15 }}
             transition={{ type: 'spring', duration: 0.4 }}
-            className="relative w-full max-w-lg bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-10"
+            className="relative w-full max-w-lg bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-10 my-6"
           >
             {/* Header */}
             <div className="border-b border-slate-100 px-6 py-4 flex items-center justify-between bg-slate-50/50">
@@ -100,7 +157,7 @@ export default function FeedbackModal({ isOpen, onClose, onSubmit }: FeedbackMod
                   </p>
                 </motion.div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-5">
                   {/* Error banner */}
                   {error && (
                     <div className="p-3 bg-rose-50 border border-rose-100 text-rose-600 rounded-xl text-sm font-medium flex items-center gap-2">
@@ -158,11 +215,52 @@ export default function FeedbackModal({ isOpen, onClose, onSubmit }: FeedbackMod
                           ? 'Describe the issue, what happened, and how to reproduce it...'
                           : 'Describe your feature request or suggestion for improvement...'
                       }
-                      rows={5}
+                      rows={4}
                       required
                       maxLength={2050}
                       className="w-full px-4 py-3 border border-slate-200 rounded-xl text-slate-800 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition resize-none placeholder:text-slate-400"
                     />
+                  </div>
+
+                  {/* Image Attachment Section */}
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                      Screenshot / Image (Optional)
+                    </label>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      accept="image/*"
+                      className="hidden"
+                    />
+
+                    {selectedImage ? (
+                      <div className="relative inline-block border border-slate-200 rounded-xl overflow-hidden shadow-sm group">
+                        <img
+                          src={selectedImage}
+                          alt="Feedback Attachment"
+                          className="w-full max-h-48 object-cover rounded-xl"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setSelectedImage(null)}
+                          className="absolute top-2 right-2 p-1.5 bg-slate-900/80 hover:bg-red-600 text-white rounded-lg transition-colors shadow"
+                          title="Remove attached image"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full py-3 px-4 border border-dashed border-slate-300 hover:border-emerald-500 hover:bg-emerald-50/40 rounded-xl text-xs font-semibold text-slate-500 hover:text-emerald-700 transition flex items-center justify-center gap-2"
+                      >
+                        <ImageIcon className="w-4 h-4 text-slate-400 group-hover:text-emerald-600" />
+                        <span>Click to attach screenshot or photo</span>
+                      </button>
+                    )}
                   </div>
 
                   {/* Buttons */}

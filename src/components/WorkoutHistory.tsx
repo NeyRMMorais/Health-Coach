@@ -15,6 +15,25 @@ export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ history, onDelet
   const totalVolumeAllTime = history.reduce((acc, h) => acc + (h.totalVolumeKg || 0), 0);
   const totalMinutesAllTime = history.reduce((acc, h) => acc + (h.durationMinutes || 0), 0);
 
+  // Sort strictly by actual realization date and start time (newest/latest first)
+  const sortedHistory = [...history].sort((a, b) => {
+    const dateTimeA = `${a.date || '1970-01-01'}T${a.startTime || '00:00'}`;
+    const dateTimeB = `${b.date || '1970-01-01'}T${b.startTime || '00:00'}`;
+    const timeA = new Date(dateTimeA).getTime();
+    const timeB = new Date(dateTimeB).getTime();
+
+    if (!isNaN(timeA) && !isNaN(timeB) && timeA !== timeB) {
+      return timeB - timeA;
+    }
+
+    const dateComp = (b.date || '').localeCompare(a.date || '');
+    if (dateComp !== 0) return dateComp;
+
+    const createdA = (a.createdAt as any)?.seconds || 0;
+    const createdB = (b.createdAt as any)?.seconds || 0;
+    return createdB - createdA;
+  });
+
   const toggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
   };
@@ -58,14 +77,14 @@ export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ history, onDelet
       <div className="space-y-4">
         <h3 className="text-lg font-bold text-slate-900">Workout History</h3>
 
-        {history.length === 0 ? (
+        {sortedHistory.length === 0 ? (
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center text-slate-500">
             <Dumbbell className="w-8 h-8 mx-auto mb-2 opacity-50" />
             <p className="text-sm">No workout history logged yet.</p>
             <p className="text-xs text-slate-600 mt-1">Start a routine or empty workout to record your sessions.</p>
           </div>
         ) : (
-          history.map((log) => {
+          sortedHistory.map((log) => {
             const isExpanded = expandedId === log.id;
             return (
               <div

@@ -183,14 +183,15 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
 
   const [isFeedbackOpen, setIsFeedbackOpen] = useState<boolean>(false);
 
-  const handleAddFeedback = async (feedbackData: { type: 'bug' | 'improvement'; text: string }) => {
+  const handleAddFeedback = async (feedbackData: { type: 'bug' | 'improvement'; text: string; imageBase64?: string }) => {
     if (!user) return;
     const feedbackId = doc(collection(db, 'feedback')).id;
     const path = `feedback/${feedbackId}`;
     try {
-      const newFeedback = {
+      const newFeedback: Record<string, any> = {
         id: feedbackId,
         userId: user.uid,
+        userEmail: user.email || undefined,
         ...feedbackData,
         createdAt: serverTimestamp(),
       };

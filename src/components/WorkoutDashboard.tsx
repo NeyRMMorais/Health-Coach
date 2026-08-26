@@ -125,11 +125,23 @@ export const WorkoutDashboard: React.FC<WorkoutDashboardProps> = ({ user: propUs
           } as WorkoutLog);
         });
 
-        // Sort newest first
+        // Sort by actual realization date and time (newest first)
         loaded.sort((a, b) => {
-          const tA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : new Date(a.date).getTime();
-          const tB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : new Date(b.date).getTime();
-          return tB - tA;
+          const dateTimeA = `${a.date || '1970-01-01'}T${a.startTime || '00:00'}`;
+          const dateTimeB = `${b.date || '1970-01-01'}T${b.startTime || '00:00'}`;
+          const timeA = new Date(dateTimeA).getTime();
+          const timeB = new Date(dateTimeB).getTime();
+
+          if (!isNaN(timeA) && !isNaN(timeB) && timeA !== timeB) {
+            return timeB - timeA;
+          }
+
+          const dateComp = (b.date || '').localeCompare(a.date || '');
+          if (dateComp !== 0) return dateComp;
+
+          const createdA = a.createdAt?.seconds || 0;
+          const createdB = b.createdAt?.seconds || 0;
+          return createdB - createdA;
         });
 
         setHistory(loaded);
@@ -323,7 +335,25 @@ export const WorkoutDashboard: React.FC<WorkoutDashboardProps> = ({ user: propUs
         onClose={() => setIsLibraryOpen(false)}
         onSelectExercise={(exercise) => {
           const isStretching = exercise.category === 'Stretching' || exercise.targetMuscleGroup === 'Flexibility';
-          const initialWeight = isStretching ? 0 : 20;
+          const isBodyweight = exercise.category === 'Bodyweight';
+          
+          let initialWeight = isStretching || isBodyweight ? 0 : 20;
+          if (!isStretching && !isBodyweight && history.length > 0) {
+            for (const log of history) {
+              const match = log.exercises.find((e) => e.exerciseId === exercise.id || e.exerciseName.toLowerCase() === exercise.name.toLowerCase());
+              if (match && match.sets.length > 0) {
+                const completedSets = match.sets.filter((s) => s.completed && s.weight !== undefined && s.weight !== null);
+                if (completedSets.length > 0) {
+                  initialWeight = completedSets[completedSets.length - 1].weight;
+                  break;
+                }
+                if (match.sets[0].weight !== undefined && match.sets[0].weight !== null) {
+                  initialWeight = match.sets[0].weight;
+                  break;
+                }
+              }
+            }
+          }
 
           // If no active session, start a workout with this exercise
           setActiveSession({

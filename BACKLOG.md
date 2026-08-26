@@ -12,14 +12,6 @@ This backlog tracks upcoming feature requests, architectural improvements, and b
 
 ---
 
-## 🚀 Up Next (Medium Priority)
-
-### 2. 🔗 Phase 3: Deep Health Coach Integration
-* **Goal**: Integrate active workout calories into daily net nutrition budget and sync workout logs to Firestore.
-* **User Story**: *"I want my strength workout active calories burned to subtract automatically from my daily calorie budget in the Food Diary tab."*
-
----
-
 ## ✅ Completed
 
 *   **☁️ Real-Time Cross-Device Sync for Workout History & Custom Exercises**:

@@ -98,6 +98,34 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
     return null;
   });
 
+  // Helper to compute suggested starting weight from workoutHistory
+  const getSuggestedWeight = (exId: string, exName: string, category?: string, muscleGroup?: string): number => {
+    if (category === 'Stretching' || muscleGroup === 'Flexibility') return 0;
+    if (category === 'Bodyweight') return 0;
+
+    if (workoutHistory && workoutHistory.length > 0) {
+      for (const log of workoutHistory) {
+        const found = log.exercises.find(
+          (e) => e.exerciseId === exId || e.exerciseName.toLowerCase() === exName.toLowerCase()
+        );
+        if (found && found.sets && found.sets.length > 0) {
+          const completedSets = found.sets.filter((s) => s.completed && s.weight !== undefined && s.weight !== null);
+          if (completedSets.length > 0) {
+            return completedSets[completedSets.length - 1].weight;
+          }
+          if (found.sets[0].weight !== undefined && found.sets[0].weight !== null) {
+            return found.sets[0].weight;
+          }
+        }
+      }
+    }
+
+    if (category === 'Dumbbell') return 12;
+    if (category === 'Barbell') return 20;
+    if (category === 'Cable' || category === 'Machine') return 15;
+    return 20;
+  };
+
   const [workoutName, setWorkoutName] = useState<string>(
     savedDraft?.workoutName ?? initialWorkoutName
   );
@@ -105,7 +133,20 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
     if (savedDraft?.exercises && savedDraft.exercises.length > 0) {
       return savedDraft.exercises;
     }
-    if (initialExercises.length > 0) return initialExercises;
+    if (initialExercises.length > 0) {
+      return initialExercises.map((ex) => {
+        const suggested = getSuggestedWeight(ex.exerciseId, ex.exerciseName, ex.category, ex.targetMuscleGroup);
+        return {
+          ...ex,
+          sets: ex.sets.map((s) => ({
+            ...s,
+            weight: (s.weight === undefined || s.weight === 0) && (ex.category !== 'Stretching' && ex.targetMuscleGroup !== 'Flexibility')
+              ? suggested
+              : s.weight,
+          })),
+        };
+      });
+    }
     return [];
   });
 
@@ -391,18 +432,18 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
       const oldName = target.exerciseName;
       const oldId = target.exerciseId;
 
-      const isStretching = selected.category === 'Stretching' || selected.targetMuscleGroup === 'Flexibility';
+      const suggestedWeight = getSuggestedWeight(selected.id, selected.name, selected.category, selected.targetMuscleGroup);
       
       target.exerciseId = selected.id;
       target.exerciseName = selected.name;
       target.targetMuscleGroup = selected.targetMuscleGroup;
       target.category = selected.category;
 
-      if (isStretching) {
-        target.sets.forEach((s) => {
-          if (!s.completed && s.weight > 0) s.weight = 0;
-        });
-      }
+      target.sets.forEach((s) => {
+        if (!s.completed) {
+          s.weight = suggestedWeight;
+        }
+      });
 
       setExercises(updated);
       setReplacingExerciseIndex(null);
@@ -415,9 +456,8 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
         newExercise: selected,
       });
     } else {
-      // Adding new exercise
-      const isStretching = selected.category === 'Stretching' || selected.targetMuscleGroup === 'Flexibility';
-      const initialWeight = isStretching ? 0 : 20;
+      // Adding new exercise with suggested weight
+      const suggestedWeight = getSuggestedWeight(selected.id, selected.name, selected.category, selected.targetMuscleGroup);
 
       const newWorkoutEx: WorkoutExercise = {
         exerciseId: selected.id,
@@ -428,7 +468,7 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
           {
             id: `set-${Date.now()}-1`,
             setNumber: 1,
-            weight: initialWeight,
+            weight: suggestedWeight,
             reps: 10,
             rpe: 8,
             completed: false,
@@ -909,12 +949,14 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
                       return (
                         <tr
                           key={s.id}
-                          className={`transition-colors ${
-                            s.completed ? 'bg-emerald-950/20 text-emerald-100' : 'hover:bg-slate-850/50'
+                          className={`transition-all duration-150 ${
+                            s.completed
+                              ? 'bg-emerald-950/35 border-l-4 border-emerald-400 text-emerald-100'
+                              : 'hover:bg-slate-850/50 text-slate-300'
                           }`}
                         >
                           {/* Set Number */}
-                          <td className="py-2.5 text-center font-bold text-slate-300">
+                          <td className={`py-2.5 text-center font-bold ${s.completed ? 'text-emerald-400' : 'text-slate-300'}`}>
                             {s.setNumber}
                           </td>
 
@@ -929,7 +971,11 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
                                 const val = e.target.value === '' ? 0 : parseFloat(e.target.value);
                                 handleUpdateSet(exIndex, setIndex, 'weight', isNaN(val) ? 0 : val);
                               }}
-                              className="w-20 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-white font-semibold focus:outline-none focus:border-emerald-500"
+                              className={`w-20 border rounded-lg px-2.5 py-1.5 font-semibold focus:outline-none focus:border-emerald-500 transition-colors ${
+                                s.completed
+                                  ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200'
+                                  : 'bg-slate-950 border-slate-800 text-white'
+                              }`}
                             />
                           </td>
 
@@ -943,7 +989,11 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
                                 const val = e.target.value === '' ? 0 : parseInt(e.target.value);
                                 handleUpdateSet(exIndex, setIndex, 'reps', isNaN(val) ? 0 : val);
                               }}
-                              className="w-16 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-white font-semibold focus:outline-none focus:border-emerald-500"
+                              className={`w-16 border rounded-lg px-2.5 py-1.5 font-semibold focus:outline-none focus:border-emerald-500 transition-colors ${
+                                s.completed
+                                  ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200'
+                                  : 'bg-slate-950 border-slate-800 text-white'
+                              }`}
                             />
                           </td>
 
