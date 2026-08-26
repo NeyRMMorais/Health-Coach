@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Plus, Dumbbell, X, Check } from 'lucide-react';
+import { collection, doc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '../firebase';
 import { Exercise, TargetMuscleGroup, ExerciseCategory } from '../types';
 import { DEFAULT_EXERCISES } from '../data/defaultExercises';
 
@@ -40,6 +42,76 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
   const [newMuscle, setNewMuscle] = useState<TargetMuscleGroup>('Chest');
   const [newCategory, setNewCategory] = useState<ExerciseCategory>('Barbell');
 
+  // Sync custom exercises with Firestore
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) {
+      const saved = localStorage.getItem('custom_exercises');
+      if (saved) {
+        try {
+          const custom: Exercise[] = JSON.parse(saved);
+          setExercises([...DEFAULT_EXERCISES, ...custom]);
+        } catch (e) {}
+      }
+      return;
+    }
+
+    // Migrate guest custom exercises from localStorage to Firestore
+    const saved = localStorage.getItem('custom_exercises');
+    if (saved) {
+      try {
+        const custom: Exercise[] = JSON.parse(saved);
+        if (custom.length > 0) {
+          custom.forEach(async (ex) => {
+            const exId = ex.id.startsWith('custom-') ? ex.id : `custom-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+            const ref = doc(db, `users/${user.uid}/customExercises`, exId);
+            await setDoc(
+              ref,
+              {
+                id: exId,
+                userId: user.uid,
+                name: ex.name,
+                targetMuscleGroup: ex.targetMuscleGroup,
+                category: ex.category,
+                description: ex.description || '',
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+              },
+              { merge: true }
+            );
+          });
+          localStorage.removeItem('custom_exercises');
+        }
+      } catch (e) {
+        console.error('Failed to migrate guest custom exercises:', e);
+      }
+    }
+
+    const exPath = `users/${user.uid}/customExercises`;
+    const unsub = onSnapshot(
+      collection(db, exPath),
+      (snapshot) => {
+        const customList: Exercise[] = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          customList.push({
+            id: docSnap.id,
+            name: data.name,
+            targetMuscleGroup: data.targetMuscleGroup,
+            category: data.category,
+            description: data.description,
+          });
+        });
+        setExercises([...DEFAULT_EXERCISES, ...customList]);
+      },
+      (error) => {
+        console.error('Firestore customExercises listener error:', error);
+      }
+    );
+
+    return () => unsub();
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const filteredExercises = exercises.filter((ex) => {
@@ -49,7 +121,7 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
     return matchesSearch && matchesMuscle && matchesCategory;
   });
 
-  const handleCreateExercise = (e: React.FormEvent) => {
+  const handleCreateExercise = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim()) return;
 
@@ -63,9 +135,26 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
     const updated = [newEx, ...exercises];
     setExercises(updated);
 
-    // Save custom exercises to localStorage
-    const customOnly = updated.filter((ex) => ex.id.startsWith('custom-'));
-    localStorage.setItem('custom_exercises', JSON.stringify(customOnly));
+    const user = auth.currentUser;
+    if (user) {
+      try {
+        const ref = doc(db, `users/${user.uid}/customExercises`, newEx.id);
+        await setDoc(ref, {
+          id: newEx.id,
+          userId: user.uid,
+          name: newEx.name,
+          targetMuscleGroup: newEx.targetMuscleGroup,
+          category: newEx.category,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      } catch (err) {
+        console.error('Failed to save custom exercise to Firestore:', err);
+      }
+    } else {
+      const customOnly = updated.filter((ex) => ex.id.startsWith('custom-'));
+      localStorage.setItem('custom_exercises', JSON.stringify(customOnly));
+    }
 
     setNewName('');
     setIsCreating(false);

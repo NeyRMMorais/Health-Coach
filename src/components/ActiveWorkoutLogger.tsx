@@ -27,12 +27,30 @@ interface ActiveWorkoutLoggerProps {
   onCancel: () => void;
 }
 
-// Simple Web Audio API Beep Generator (no external asset required)
+// Simple Web Audio API Beep Generator (no external asset required) with Mobile Autoplay Unlock
+let sharedAudioContext: AudioContext | null = null;
+
+const unlockAudioContext = () => {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return null;
+    if (!sharedAudioContext || sharedAudioContext.state === 'closed') {
+      sharedAudioContext = new AudioContextClass();
+    }
+    if (sharedAudioContext.state === 'suspended') {
+      sharedAudioContext.resume().catch((err) => console.warn('AudioContext resume rejected', err));
+    }
+    return sharedAudioContext;
+  } catch (e) {
+    console.warn('AudioContext unlock failed', e);
+    return null;
+  }
+};
+
 const playCompletionBeep = () => {
   try {
-    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContext) return;
-    const ctx = new AudioContext();
+    const ctx = unlockAudioContext();
+    if (!ctx) return;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = 'sine';
@@ -54,6 +72,19 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
   onFinishWorkout,
   onCancel,
 }) => {
+  // Mobile AudioContext Gesture Unlock Listener
+  useEffect(() => {
+    const handleUnlockGesture = () => {
+      unlockAudioContext();
+    };
+    window.addEventListener('click', handleUnlockGesture, { once: true, passive: true });
+    window.addEventListener('touchstart', handleUnlockGesture, { once: true, passive: true });
+    return () => {
+      window.removeEventListener('click', handleUnlockGesture);
+      window.removeEventListener('touchstart', handleUnlockGesture);
+    };
+  }, []);
+
   // Load initial state from localStorage draft if present
   const [savedDraft] = useState<ActiveWorkoutDraft | null>(() => {
     try {

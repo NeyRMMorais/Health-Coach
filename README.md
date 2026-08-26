@@ -1,8 +1,21 @@
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
+
 # 🥗 Health Coach AI
 
 An intelligent, AI-powered health and nutrition coach application built with React, Vite, Express, and Google Gemini AI.
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Cloud%20Run-10B981?style=for-the-badge&logo=googlecloudrun&logoColor=white)](https://health-coach-294927768151.europe-west2.run.app)
+[![Google Gemini](https://img.shields.io/badge/AI-Google%20Gemini-8E75FF?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev/)
+[![React](https://img.shields.io/badge/React-19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-6-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev/)
+[![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Firebase](https://img.shields.io/badge/Firebase-Firestore%20%26%20Auth-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com/)
+
 **Live Production URL**: [https://health-coach-294927768151.europe-west2.run.app](https://health-coach-294927768151.europe-west2.run.app)
+
+</div>
 
 ---
 

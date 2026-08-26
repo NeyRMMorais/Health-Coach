@@ -806,6 +806,7 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
         isOpen={isAiArchitectOpen}
         onClose={() => setIsAiArchitectOpen(false)}
         onSaveRoutine={handleAiRoutineSave}
+        userId={auth.currentUser?.uid || 'guest'}
       />
 
       {/* Reorder Exercises Modal */}

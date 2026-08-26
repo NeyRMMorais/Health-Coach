@@ -18,12 +18,16 @@ This backlog tracks upcoming feature requests, architectural improvements, and b
 * **Goal**: Integrate active workout calories into daily net nutrition budget and sync workout logs to Firestore.
 * **User Story**: *"I want my strength workout active calories burned to subtract automatically from my daily calorie budget in the Food Diary tab."*
 
-### 3. 💧 Hydration Tracker
-* **Goal**: Integrate a simple visual tracker to log daily water intake.
-
 ---
 
 ## ✅ Completed
+
+*   **☁️ Real-Time Cross-Device Sync for Workout History & Custom Exercises**:
+    * **Workout History (`/users/{userId}/workoutLogs`)**: Real-time Firestore synchronization for all completed workout logs with automatic migration of guest sessions from `localStorage` upon login.
+    * **Custom Exercises (`/users/{userId}/customExercises`)**: Real-time Firestore sync for user-created custom exercises with guest fallback and migration.
+    * **Firestore Security Rules**: Strict ownership and verified email security rules for workout logs and custom exercises under `/users/{userId}`.
+*   **🔊 Mobile AudioContext Autoplay Unlock**: Seamless Web Audio `AudioContext` initialization and resume on touch/click gestures, ensuring rest timer completion chimes are never silenced by iOS/Android browser autoplay policies.
+*   **🤖 AI Routine Importer User ID Fix**: Bound authenticated user ID dynamically in AI Workout Architect routine generator to prevent permission rejections when saving imported routines.
 
 * **🏋️ Phase 1: Strength Tracker & Gym Logger (PUSH Replica)**:
   * **Set-by-Set Tracker**: Real-time weight (**kg**), reps, RPE (@1–@10 / Reps in Reserve), and Epley 1RM estimation ($1\text{RM} = w \times (1 + r/30)$).

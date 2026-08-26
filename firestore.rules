@@ -238,6 +238,48 @@ service cloud.firestore {
 
         allow delete: if isSignedIn() && request.auth.uid == userId;
       }
+
+      match /workoutLogs/{logId} {
+        allow get: if isSignedIn() && request.auth.uid == userId;
+        allow list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isEmailVerified() &&
+                          isValidId(userId) &&
+                          isValidId(logId) &&
+                          isOwner(userId) &&
+                          incoming().id == logId &&
+                          incoming().userId == request.auth.uid;
+
+        allow update: if isEmailVerified() &&
+                          isValidId(userId) &&
+                          isValidId(logId) &&
+                          isOwner(userId) &&
+                          incoming().id == existing().id &&
+                          incoming().userId == existing().userId;
+
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
+
+      match /customExercises/{exerciseId} {
+        allow get: if isSignedIn() && request.auth.uid == userId;
+        allow list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isEmailVerified() &&
+                          isValidId(userId) &&
+                          isValidId(exerciseId) &&
+                          isOwner(userId) &&
+                          incoming().id == exerciseId &&
+                          incoming().userId == request.auth.uid;
+
+        allow update: if isEmailVerified() &&
+                          isValidId(userId) &&
+                          isValidId(exerciseId) &&
+                          isOwner(userId) &&
+                          incoming().id == existing().id &&
+                          incoming().userId == existing().userId;
+
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
     }
 
     match /feedback/{feedbackId} {

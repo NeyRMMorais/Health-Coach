@@ -1036,7 +1036,7 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
               >
-                <WorkoutDashboard />
+                <WorkoutDashboard user={user} />
               </motion.div>
             )}
 

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dumbbell, Play, Plus, BookOpen, History, Award, CheckCircle2, Activity } from 'lucide-react';
+import { collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '../firebase';
 import { WorkoutLog, WorkoutExercise, Exercise } from '../types';
 import { ActiveWorkoutLogger, ACTIVE_WORKOUT_DRAFT_KEY, ActiveWorkoutDraft } from './ActiveWorkoutLogger';
 import { RoutineManager } from './RoutineManager';
@@ -7,7 +9,11 @@ import { ExerciseLibraryModal } from './ExerciseLibraryModal';
 import { WorkoutHistory } from './WorkoutHistory';
 import { BodyHeatmapView } from './BodyHeatmapView';
 
-export const WorkoutDashboard: React.FC = () => {
+interface WorkoutDashboardProps {
+  user?: any;
+}
+
+export const WorkoutDashboard: React.FC<WorkoutDashboardProps> = ({ user: propUser }) => {
   const [activeTab, setActiveTab] = useState<'routines' | 'heatmap' | 'history' | 'library'>(() => {
     try {
       const savedTab = localStorage.getItem('healthcoach_workout_dashboard_tab');
@@ -60,6 +66,80 @@ export const WorkoutDashboard: React.FC = () => {
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
+  // Firestore Real-Time Sync & Guest Migration
+  useEffect(() => {
+    const currentUser = propUser || auth.currentUser;
+    if (!currentUser) return;
+
+    // Migrate guest workout logs from localStorage to Firestore
+    const guestLogsStr = localStorage.getItem('workout_history');
+    if (guestLogsStr) {
+      try {
+        const guestLogs: WorkoutLog[] = JSON.parse(guestLogsStr);
+        if (guestLogs.length > 0) {
+          guestLogs.forEach(async (log) => {
+            const logId = log.id.startsWith('log-') ? log.id : `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+            const ref = doc(db, `users/${currentUser.uid}/workoutLogs`, logId);
+            await setDoc(
+              ref,
+              {
+                ...log,
+                id: logId,
+                userId: currentUser.uid,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+              },
+              { merge: true }
+            );
+          });
+          localStorage.removeItem('workout_history');
+        }
+      } catch (e) {
+        console.error('Failed to migrate guest workout logs:', e);
+      }
+    }
+
+    // Subscribe to user's workoutLogs collection
+    const logsPath = `users/${currentUser.uid}/workoutLogs`;
+    const unsubscribe = onSnapshot(
+      collection(db, logsPath),
+      (snapshot) => {
+        const loaded: WorkoutLog[] = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          loaded.push({
+            id: docSnap.id,
+            userId: data.userId || currentUser.uid,
+            name: data.name || 'Workout',
+            date: data.date || new Date().toISOString().split('T')[0],
+            startTime: data.startTime || '00:00',
+            endTime: data.endTime,
+            durationMinutes: data.durationMinutes || 0,
+            exercises: Array.isArray(data.exercises) ? data.exercises : [],
+            totalVolumeKg: data.totalVolumeKg || 0,
+            activeCaloriesBurned: data.activeCaloriesBurned,
+            createdAt: data.createdAt,
+            updatedAt: data.updatedAt,
+          } as WorkoutLog);
+        });
+
+        // Sort newest first
+        loaded.sort((a, b) => {
+          const tA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : new Date(a.date).getTime();
+          const tB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : new Date(b.date).getTime();
+          return tB - tA;
+        });
+
+        setHistory(loaded);
+      },
+      (error) => {
+        console.error('Firestore workoutLogs listener error:', error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [propUser]);
+
   const saveHistory = (newHistory: WorkoutLog[]) => {
     setHistory(newHistory);
     localStorage.setItem('workout_history', JSON.stringify(newHistory));
@@ -79,16 +159,39 @@ export const WorkoutDashboard: React.FC = () => {
     });
   };
 
-  const handleFinishWorkout = (log: WorkoutLog) => {
-    const updated = [log, ...history];
+  const handleFinishWorkout = async (log: WorkoutLog) => {
+    const currentUser = propUser || auth.currentUser;
+    const finalUserId = currentUser ? currentUser.uid : 'guest';
+    const logId = log.id && !log.id.startsWith('draft_') ? log.id : `log-${Date.now()}`;
+    const finalizedLog: WorkoutLog = {
+      ...log,
+      id: logId,
+      userId: finalUserId,
+    };
+
+    const updated = [finalizedLog, ...history.filter((h) => h.id !== logId)];
     saveHistory(updated);
+
+    if (currentUser) {
+      try {
+        const ref = doc(db, `users/${currentUser.uid}/workoutLogs`, logId);
+        await setDoc(ref, {
+          ...finalizedLog,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      } catch (err) {
+        console.error('Failed to save workout log to Firestore:', err);
+      }
+    }
+
     try {
       localStorage.removeItem(ACTIVE_WORKOUT_DRAFT_KEY);
     } catch (e) {
       console.error('Failed to clear draft on finish', e);
     }
     setActiveSession(null);
-    setSuccessToast(`🎉 ${log.name} logged successfully! (${log.totalVolumeKg.toLocaleString()} kg lifted)`);
+    setSuccessToast(`🎉 ${finalizedLog.name} logged successfully! (${finalizedLog.totalVolumeKg.toLocaleString()} kg lifted)`);
 
     setTimeout(() => {
       setSuccessToast(null);
@@ -104,9 +207,18 @@ export const WorkoutDashboard: React.FC = () => {
     setActiveSession(null);
   };
 
-  const handleDeleteWorkout = (logId: string) => {
+  const handleDeleteWorkout = async (logId: string) => {
     const updated = history.filter((h) => h.id !== logId);
     saveHistory(updated);
+
+    const currentUser = propUser || auth.currentUser;
+    if (currentUser) {
+      try {
+        await deleteDoc(doc(db, `users/${currentUser.uid}/workoutLogs`, logId));
+      } catch (err) {
+        console.error('Failed to delete workout log from Firestore:', err);
+      }
+    }
   };
 
   // If an active session is in progress, show Active Workout Logger

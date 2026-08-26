@@ -1,0 +1,14 @@
+node_modules
+dist
+build
+coverage
+.git
+.gitignore
+.env*
+!.env.example
+*.log
+.firebase
+.DS_Store
+README.md
+BACKLOG.md
+security_spec.md

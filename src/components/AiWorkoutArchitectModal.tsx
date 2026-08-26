@@ -6,12 +6,14 @@ interface AiWorkoutArchitectModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSaveRoutine: (routine: WorkoutRoutine) => void;
+  userId?: string;
 }
 
 export const AiWorkoutArchitectModal: React.FC<AiWorkoutArchitectModalProps> = ({
   isOpen,
   onClose,
   onSaveRoutine,
+  userId = 'guest',
 }) => {
   const [rawText, setRawText] = useState('');
   const [isCopied, setIsCopied] = useState(false);
@@ -79,7 +81,7 @@ Day 4: Legs & Core - Barbell Squats 4x8, Romanian Deadlifts 3x10, Leg Extension 
   const handleSave = () => {
     const finalRoutine: WorkoutRoutine = {
       id: `routine_ai_${Date.now()}`,
-      userId: 'user_current',
+      userId: userId || 'guest',
       title: parsedTitle.trim() || 'AI Workout Routine',
       description: parsedDescription.trim() || 'AI Imported Routine',
       days: parsedDays,
