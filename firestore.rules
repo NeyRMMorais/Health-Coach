@@ -104,6 +104,8 @@ service cloud.firestore {
              data.text is string &&
              data.text.size() > 0 &&
              data.text.size() <= 2000 &&
+             (!('userEmail' in data) || (data.userEmail is string && data.userEmail.size() <= 320)) &&
+             (!('imageBase64' in data) || (data.imageBase64 is string && data.imageBase64.size() <= 1048576)) &&
              data.createdAt is timestamp;
     }
 
@@ -288,7 +290,7 @@ service cloud.firestore {
                        incoming().id == feedbackId &&
                        incoming().userId == request.auth.uid &&
                        incoming().keys().hasAll(['id', 'userId', 'type', 'text', 'createdAt']) &&
-                       incoming().keys().size() == 5 &&
+                       incoming().keys().hasOnly(['id', 'userId', 'type', 'text', 'createdAt', 'userEmail', 'imageBase64']) &&
                        incoming().createdAt == request.time &&
                        isValidFeedback(incoming());
       allow read, update, delete: if false;

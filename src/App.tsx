@@ -191,10 +191,18 @@ Fats: ${remainingFats}g/${fTargetVal}g]`;
       const newFeedback: Record<string, any> = {
         id: feedbackId,
         userId: user.uid,
-        userEmail: user.email || undefined,
-        ...feedbackData,
+        type: feedbackData.type,
+        text: feedbackData.text,
         createdAt: serverTimestamp(),
       };
+
+      if (user.email) {
+        newFeedback.userEmail = user.email;
+      }
+      if (feedbackData.imageBase64) {
+        newFeedback.imageBase64 = feedbackData.imageBase64;
+      }
+
       await setDoc(doc(db, 'feedback', feedbackId), newFeedback);
     } catch (err) {
       handleFirestoreError(err, OperationType.CREATE, path);

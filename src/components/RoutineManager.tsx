@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Play, Plus, Dumbbell, Trash2, Edit, Check, ChevronRight, X, Calendar, HeartPulse, Flame, Sun, Layers, Sparkles, GripVertical } from 'lucide-react';
 import { collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebase';
-import { WorkoutRoutine, RoutineDay, RoutineDayType, WorkoutExercise, Exercise, TargetMuscleGroup } from '../types';
+import { WorkoutRoutine, RoutineDay, RoutineDayType, WorkoutExercise, Exercise, TargetMuscleGroup, WorkoutLog } from '../types';
 import { DEFAULT_ROUTINES } from '../data/defaultRoutines';
 import { ExerciseLibraryModal } from './ExerciseLibraryModal';
 import { AiWorkoutArchitectModal } from './AiWorkoutArchitectModal';
@@ -363,7 +363,7 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
     if (!day.exercises || day.exercises.length === 0) return;
 
     const initialWorkoutExercises: WorkoutExercise[] = day.exercises.map((item) => {
-      const isStretching = item.category === 'Stretching' || item.targetMuscleGroup === 'Flexibility';
+      const isStretching = item.category === 'Stretching';
       const initialWeight = isStretching ? 0 : 20;
 
       const sets = Array.from({ length: item.targetSets }).map((_, idx) => ({

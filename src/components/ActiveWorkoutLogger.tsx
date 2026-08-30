@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Play, Pause, Plus, Trash2, Check, Clock, Dumbbell, Award, RotateCcw, ChevronRight, ChevronDown, X, Volume2, AlertTriangle, ArrowLeftRight, GripVertical, Info, FileText, CheckCircle2 } from 'lucide-react';
 import { WorkoutLog, WorkoutExercise, ExerciseSet, Exercise, TargetMuscleGroup, ExerciseCategory } from '../types';
 import { ExerciseLibraryModal } from './ExerciseLibraryModal';
@@ -140,7 +141,7 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
           ...ex,
           sets: ex.sets.map((s) => ({
             ...s,
-            weight: (s.weight === undefined || s.weight === 0) && (ex.category !== 'Stretching' && ex.targetMuscleGroup !== 'Flexibility')
+            weight: (s.weight === undefined || s.weight === 0) && ex.category !== 'Stretching'
               ? suggested
               : s.weight,
           })),
@@ -213,6 +214,16 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
   const [collapsedExercises, setCollapsedExercises] = useState<Record<number, boolean>>({});
 
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const collapseTimeoutsRef = useRef<{ [exIndex: number]: NodeJS.Timeout }>({});
+
+  useEffect(() => {
+    return () => {
+      Object.keys(collapseTimeoutsRef.current).forEach((key) => {
+        const timeout = collapseTimeoutsRef.current[Number(key)];
+        if (timeout) clearTimeout(timeout);
+      });
+    };
+  }, []);
 
   const handleTouchStart = () => {
     longPressTimerRef.current = setTimeout(() => {
@@ -356,11 +367,20 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
     setItem.completed = willComplete;
     setExercises(updated);
 
+    // Clear any pending collapse timeout for this exercise
+    if (collapseTimeoutsRef.current[exIndex]) {
+      clearTimeout(collapseTimeoutsRef.current[exIndex]);
+      delete collapseTimeoutsRef.current[exIndex];
+    }
+
     if (willComplete) {
-      // If all sets in this exercise are now completed, automatically compact/collapse the card
+      // If all sets in this exercise are now completed, auto-compact smoothly after an ~850ms window
       const allDone = updated[exIndex].sets.every((s) => s.completed);
       if (allDone) {
-        setCollapsedExercises((prev) => ({ ...prev, [exIndex]: true }));
+        collapseTimeoutsRef.current[exIndex] = setTimeout(() => {
+          setCollapsedExercises((prev) => ({ ...prev, [exIndex]: true }));
+          delete collapseTimeoutsRef.current[exIndex];
+        }, 850);
       }
 
       const exerciseRest = updated[exIndex].restSeconds || restDuration;
@@ -803,257 +823,279 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
           const isCollapsed = !!collapsedExercises[exIndex];
           const completedInEx = ex.sets.filter((s) => s.completed).length;
           const totalInEx = ex.sets.length;
+          const isAllCompleted = totalInEx > 0 && completedInEx === totalInEx;
           const exVolume = ex.sets.reduce((sum, s) => sum + (s.completed ? s.weight * s.reps : 0), 0);
 
-          if (isCollapsed) {
-            return (
-              <div
-                key={`${ex.exerciseId}-${exIndex}`}
-                className="bg-slate-900 border border-slate-800 hover:border-emerald-500/40 rounded-2xl p-4 shadow-xl flex items-center justify-between transition-all"
-              >
-                <div
-                  className="flex items-center gap-3 cursor-pointer flex-1"
-                  onClick={() => setCollapsedExercises((prev) => ({ ...prev, [exIndex]: false }))}
-                >
-                  <div className="w-7 h-7 rounded-lg bg-emerald-500 text-slate-950 flex items-center justify-center font-bold text-xs">
-                    <Check className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedExerciseForDetails(ex);
-                        }}
-                        className="text-sm font-bold text-white hover:text-emerald-400 transition-colors flex items-center gap-1.5"
-                      >
-                        {ex.exerciseName}
-                        <Info className="w-3.5 h-3.5 text-emerald-400/80" />
-                      </h3>
-                      {completedInEx === totalInEx && (
-                        <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
-                          Complete
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-xs text-slate-400">
-                      {completedInEx}/{totalInEx} Sets Complete • {exVolume.toLocaleString()} kg Volume
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      setReplacingExerciseIndex(exIndex);
-                      setIsLibraryOpen(true);
-                    }}
-                    className="p-1.5 text-slate-400 hover:text-emerald-400 rounded-lg hover:bg-slate-800 transition-colors"
-                    title="Replace Exercise"
-                  >
-                    <ArrowLeftRight className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setCollapsedExercises((prev) => ({ ...prev, [exIndex]: false }))}
-                    className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors"
-                  >
-                    <ChevronDown className="w-4 h-4" />
-                    <span>Expand</span>
-                  </button>
-                </div>
-              </div>
-            );
-          }
-
           return (
-            <div key={`${ex.exerciseId}-${exIndex}`} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-              {/* Card Header */}
-              <div
-                className="p-4 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between select-none"
-                onTouchStart={handleTouchStart}
-                onTouchEnd={handleTouchEnd}
-                onMouseDown={handleTouchStart}
-                onMouseUp={handleTouchEnd}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm">
-                    {exIndex + 1}
-                  </div>
-                  <div>
-                    <h3
-                      onClick={() => setSelectedExerciseForDetails(ex)}
-                      className="text-base font-bold text-white hover:text-emerald-400 transition-colors cursor-pointer flex items-center gap-1.5 group"
-                      title="Click to view Instructions, Notes & History"
+            <div key={`${ex.exerciseId}-${exIndex}`} className="relative">
+              <AnimatePresence mode="wait" initial={false}>
+                {isCollapsed ? (
+                  <motion.div
+                    key={`collapsed-${exIndex}`}
+                    initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                    transition={{ duration: 0.28, ease: 'easeInOut' }}
+                    className="bg-slate-900 border border-slate-800 hover:border-emerald-500/40 rounded-2xl p-4 shadow-xl flex items-center justify-between transition-colors"
+                  >
+                    <div
+                      className="flex items-center gap-3 cursor-pointer flex-1"
+                      onClick={() => setCollapsedExercises((prev) => ({ ...prev, [exIndex]: false }))}
                     >
-                      {ex.exerciseName}
-                      <Info className="w-3.5 h-3.5 text-emerald-400 opacity-60 group-hover:opacity-100 transition-opacity" />
-                    </h3>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
-                        {ex.targetMuscleGroup}
-                      </span>
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400">
-                        {ex.category}
-                      </span>
+                      <div className="w-7 h-7 rounded-lg bg-emerald-500 text-slate-950 flex items-center justify-center font-bold text-xs">
+                        <Check className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedExerciseForDetails(ex);
+                            }}
+                            className="text-sm font-bold text-white hover:text-emerald-400 transition-colors flex items-center gap-1.5"
+                          >
+                            {ex.exerciseName}
+                            <Info className="w-3.5 h-3.5 text-emerald-400/80" />
+                          </h3>
+                          {completedInEx === totalInEx && (
+                            <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
+                              Complete
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs text-slate-400">
+                          {completedInEx}/{totalInEx} Sets Complete • {exVolume.toLocaleString()} kg Volume
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  {/* Replace Exercise Button */}
-                  <button
-                    onClick={() => {
-                      setReplacingExerciseIndex(exIndex);
-                      setIsLibraryOpen(true);
-                    }}
-                    className="p-2 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded-lg transition-colors"
-                    title="Replace / Substitute Exercise"
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setReplacingExerciseIndex(exIndex);
+                          setIsLibraryOpen(true);
+                        }}
+                        className="p-1.5 text-slate-400 hover:text-emerald-400 rounded-lg hover:bg-slate-800 transition-colors"
+                        title="Replace Exercise"
+                      >
+                        <ArrowLeftRight className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setCollapsedExercises((prev) => ({ ...prev, [exIndex]: false }))}
+                        className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors"
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                        <span>Expand</span>
+                      </button>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key={`expanded-${exIndex}`}
+                    initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                    transition={{ duration: 0.28, ease: 'easeInOut' }}
+                    className={`bg-slate-900 border rounded-2xl overflow-hidden shadow-xl transition-all duration-300 ${
+                      isAllCompleted ? 'border-emerald-500/40 shadow-emerald-950/20' : 'border-slate-800'
+                    }`}
                   >
-                    <ArrowLeftRight className="w-4 h-4" />
-                  </button>
+                    {/* Card Header */}
+                    <div
+                      className="p-4 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between select-none"
+                      onTouchStart={handleTouchStart}
+                      onTouchEnd={handleTouchEnd}
+                      onMouseDown={handleTouchStart}
+                      onMouseUp={handleTouchEnd}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm">
+                          {exIndex + 1}
+                        </div>
+                        <div>
+                          <h3
+                            onClick={() => setSelectedExerciseForDetails(ex)}
+                            className="text-base font-bold text-white hover:text-emerald-400 transition-colors cursor-pointer flex items-center gap-1.5 group"
+                            title="Click to view Instructions, Notes & History"
+                          >
+                            {ex.exerciseName}
+                            <Info className="w-3.5 h-3.5 text-emerald-400 opacity-60 group-hover:opacity-100 transition-opacity" />
+                          </h3>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
+                              {ex.targetMuscleGroup}
+                            </span>
+                            <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400">
+                              {ex.category}
+                            </span>
+                            {isAllCompleted && (
+                              <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-bold flex items-center gap-1 animate-pulse">
+                                <Check className="w-3 h-3 text-emerald-400" />
+                                All Sets Complete
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
 
-                  {/* Collapse Button */}
-                  <button
-                    onClick={() => setCollapsedExercises((prev) => ({ ...prev, [exIndex]: true }))}
-                    className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
-                    title="Compact / Collapse Exercise"
-                  >
-                    <ChevronDown className="w-4 h-4" />
-                  </button>
-
-                  <button
-                    onClick={() => handleRemoveExercise(exIndex)}
-                    className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                    title="Remove Exercise"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Set Table */}
-              <div className="p-4 overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="text-slate-400 border-b border-slate-800 pb-2">
-                      <th className="pb-2 w-12 text-center">Set</th>
-                      <th className="pb-2">Weight (kg)</th>
-                      <th className="pb-2">Reps</th>
-                      <th className="pb-2 w-20">RPE (1-10)</th>
-                      <th className="pb-2 w-16 text-center">Done</th>
-                      <th className="pb-2 w-10"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/60">
-                    {ex.sets.map((s, setIndex) => {
-                      return (
-                        <tr
-                          key={s.id}
-                          className={`transition-all duration-150 ${
-                            s.completed
-                              ? 'bg-emerald-950/35 border-l-4 border-emerald-400 text-emerald-100'
-                              : 'hover:bg-slate-850/50 text-slate-300'
-                          }`}
+                      <div className="flex items-center gap-2">
+                        {/* Replace Exercise Button */}
+                        <button
+                          onClick={() => {
+                            setReplacingExerciseIndex(exIndex);
+                            setIsLibraryOpen(true);
+                          }}
+                          className="p-2 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded-lg transition-colors"
+                          title="Replace / Substitute Exercise"
                         >
-                          {/* Set Number */}
-                          <td className={`py-2.5 text-center font-bold ${s.completed ? 'text-emerald-400' : 'text-slate-300'}`}>
-                            {s.setNumber}
-                          </td>
+                          <ArrowLeftRight className="w-4 h-4" />
+                        </button>
 
-                          {/* Weight */}
-                          <td className="py-2.5 pr-2">
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.5"
-                              value={s.weight !== undefined && s.weight !== null ? s.weight : ''}
-                              onChange={(e) => {
-                                const val = e.target.value === '' ? 0 : parseFloat(e.target.value);
-                                handleUpdateSet(exIndex, setIndex, 'weight', isNaN(val) ? 0 : val);
-                              }}
-                              className={`w-20 border rounded-lg px-2.5 py-1.5 font-semibold focus:outline-none focus:border-emerald-500 transition-colors ${
-                                s.completed
-                                  ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200'
-                                  : 'bg-slate-950 border-slate-800 text-white'
-                              }`}
-                            />
-                          </td>
+                        {/* Collapse Button */}
+                        <button
+                          onClick={() => setCollapsedExercises((prev) => ({ ...prev, [exIndex]: true }))}
+                          className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                          title="Compact / Collapse Exercise"
+                        >
+                          <ChevronDown className="w-4 h-4" />
+                        </button>
 
-                          {/* Reps */}
-                          <td className="py-2.5 pr-2">
-                            <input
-                              type="number"
-                              min="0"
-                              value={s.reps !== undefined && s.reps !== null ? s.reps : ''}
-                              onChange={(e) => {
-                                const val = e.target.value === '' ? 0 : parseInt(e.target.value);
-                                handleUpdateSet(exIndex, setIndex, 'reps', isNaN(val) ? 0 : val);
-                              }}
-                              className={`w-16 border rounded-lg px-2.5 py-1.5 font-semibold focus:outline-none focus:border-emerald-500 transition-colors ${
-                                s.completed
-                                  ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200'
-                                  : 'bg-slate-950 border-slate-800 text-white'
-                              }`}
-                            />
-                          </td>
+                        <button
+                          onClick={() => handleRemoveExercise(exIndex)}
+                          className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                          title="Remove Exercise"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
 
-                          {/* RPE */}
-                          <td className="py-2.5 pr-2">
-                            <select
-                              value={s.rpe || 8}
-                              onChange={(e) =>
-                                handleUpdateSet(exIndex, setIndex, 'rpe', parseInt(e.target.value) || 8)
-                              }
-                              className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs font-semibold text-emerald-400 focus:outline-none focus:border-emerald-500 cursor-pointer shadow-inner"
-                              title={`@${s.rpe || 8} (${10 - (s.rpe || 8)} RIR)`}
-                            >
-                              <option value={6} className="bg-slate-900 text-slate-200">@6 (4 RIR)</option>
-                              <option value={7} className="bg-slate-900 text-slate-200">@7 (3 RIR)</option>
-                              <option value={8} className="bg-slate-900 text-emerald-400 font-bold">@8 (2 RIR)</option>
-                              <option value={9} className="bg-slate-900 text-amber-400 font-bold">@9 (1 RIR)</option>
-                              <option value={10} className="bg-slate-900 text-red-400 font-bold">@10 (Max)</option>
-                            </select>
-                          </td>
+                    {/* Sets Table */}
+                    <div className="p-4 overflow-x-auto">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px]">
+                            <th className="pb-2 text-center w-12">Set</th>
+                            <th className="pb-2 w-28">Weight (kg)</th>
+                            <th className="pb-2 w-24">Reps</th>
+                            <th className="pb-2 w-28">Target @RPE</th>
+                            <th className="pb-2 text-center w-14">Done</th>
+                            <th className="pb-2 text-center w-10"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800/40">
+                          {ex.sets.map((s, setIndex) => {
+                            return (
+                              <tr
+                                key={s.id}
+                                className={`transition-all duration-150 ${
+                                  s.completed
+                                    ? 'bg-emerald-950/35 border-l-4 border-emerald-400 text-emerald-100'
+                                    : 'hover:bg-slate-850/50 text-slate-300'
+                                }`}
+                              >
+                                {/* Set Number */}
+                                <td className={`py-2.5 text-center font-bold ${s.completed ? 'text-emerald-400' : 'text-slate-300'}`}>
+                                  {s.setNumber}
+                                </td>
 
-                          {/* Complete Checkbox */}
-                          <td className="py-2.5 text-center">
-                            <button
-                              type="button"
-                              onClick={() => handleToggleSetComplete(exIndex, setIndex)}
-                              className={`w-7 h-7 rounded-lg flex items-center justify-center mx-auto transition-all ${
-                                s.completed
-                                  ? 'bg-emerald-500 text-slate-950 font-bold shadow-md shadow-emerald-500/30'
-                                  : 'bg-slate-800 hover:bg-slate-700 text-slate-400'
-                              }`}
-                            >
-                              <Check className="w-4 h-4" />
-                            </button>
-                          </td>
+                                {/* Weight */}
+                                <td className="py-2.5 pr-2">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.5"
+                                    value={s.weight !== undefined && s.weight !== null ? s.weight : ''}
+                                    onChange={(e) => {
+                                      const val = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                                      handleUpdateSet(exIndex, setIndex, 'weight', isNaN(val) ? 0 : val);
+                                    }}
+                                    className={`w-20 border rounded-lg px-2.5 py-1.5 font-semibold focus:outline-none focus:border-emerald-500 transition-colors ${
+                                      s.completed
+                                        ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200'
+                                        : 'bg-slate-950 border-slate-800 text-white'
+                                    }`}
+                                  />
+                                </td>
 
-                          {/* Delete Set */}
-                          <td className="py-2.5 text-center">
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteSet(exIndex, setIndex)}
-                              className="text-slate-600 hover:text-red-400 transition-colors p-1"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                                {/* Reps */}
+                                <td className="py-2.5 pr-2">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={s.reps !== undefined && s.reps !== null ? s.reps : ''}
+                                    onChange={(e) => {
+                                      const val = e.target.value === '' ? 0 : parseInt(e.target.value);
+                                      handleUpdateSet(exIndex, setIndex, 'reps', isNaN(val) ? 0 : val);
+                                    }}
+                                    className={`w-16 border rounded-lg px-2.5 py-1.5 font-semibold focus:outline-none focus:border-emerald-500 transition-colors ${
+                                      s.completed
+                                        ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200'
+                                        : 'bg-slate-950 border-slate-800 text-white'
+                                    }`}
+                                  />
+                                </td>
 
-                <button
-                  onClick={() => handleAddSet(exIndex)}
-                  className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-emerald-400 text-xs font-semibold transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Add Set
-                </button>
-              </div>
+                                {/* RPE */}
+                                <td className="py-2.5 pr-2">
+                                  <select
+                                    value={s.rpe || 8}
+                                    onChange={(e) =>
+                                      handleUpdateSet(exIndex, setIndex, 'rpe', parseInt(e.target.value) || 8)
+                                    }
+                                    className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs font-semibold text-emerald-400 focus:outline-none focus:border-emerald-500 cursor-pointer shadow-inner"
+                                    title={`@${s.rpe || 8} (${10 - (s.rpe || 8)} RIR)`}
+                                  >
+                                    <option value={6} className="bg-slate-900 text-slate-200">@6 (4 RIR)</option>
+                                    <option value={7} className="bg-slate-900 text-slate-200">@7 (3 RIR)</option>
+                                    <option value={8} className="bg-slate-900 text-emerald-400 font-bold">@8 (2 RIR)</option>
+                                    <option value={9} className="bg-slate-900 text-amber-400 font-bold">@9 (1 RIR)</option>
+                                    <option value={10} className="bg-slate-900 text-red-400 font-bold">@10 (Max)</option>
+                                  </select>
+                                </td>
+
+                                {/* Complete Checkbox */}
+                                <td className="py-2.5 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleSetComplete(exIndex, setIndex)}
+                                    className={`w-7 h-7 rounded-lg flex items-center justify-center mx-auto transition-all ${
+                                      s.completed
+                                        ? 'bg-emerald-500 text-slate-950 font-bold shadow-md shadow-emerald-500/30 scale-105'
+                                        : 'bg-slate-800 hover:bg-slate-700 text-slate-400 hover:scale-105'
+                                    }`}
+                                  >
+                                    <Check className="w-4 h-4" />
+                                  </button>
+                                </td>
+
+                                {/* Delete Set */}
+                                <td className="py-2.5 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteSet(exIndex, setIndex)}
+                                    className="text-slate-600 hover:text-red-400 transition-colors p-1"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+
+                      <button
+                        onClick={() => handleAddSet(exIndex)}
+                        className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-emerald-400 text-xs font-semibold transition-colors"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Add Set
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           );
         })

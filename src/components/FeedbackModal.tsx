@@ -82,7 +82,14 @@ export default function FeedbackModal({ isOpen, onClose, onSubmit }: FeedbackMod
     try {
       setIsSubmitting(true);
       setError(null);
-      await onSubmit({ type, text, imageBase64: selectedImage || undefined });
+      const payload: { type: 'bug' | 'improvement'; text: string; imageBase64?: string } = {
+        type,
+        text: text.trim(),
+      };
+      if (selectedImage) {
+        payload.imageBase64 = selectedImage;
+      }
+      await onSubmit(payload);
       setSuccess(true);
       setText('');
       setSelectedImage(null);
@@ -92,7 +99,16 @@ export default function FeedbackModal({ isOpen, onClose, onSubmit }: FeedbackMod
         onClose();
       }, 2500);
     } catch (err: any) {
-      setError(err?.message || 'Failed to submit feedback. Please try again.');
+      let message = err?.message || 'Failed to submit feedback. Please try again.';
+      try {
+        const parsed = JSON.parse(message);
+        if (parsed.error) {
+          message = parsed.error;
+        }
+      } catch {
+        // use message as is
+      }
+      setError(message);
     } finally {
       setIsSubmitting(false);
     }
