@@ -37,6 +37,8 @@ An intelligent, AI-powered health and nutrition coach application built with Rea
 - **🤖 AI Quick Log**: Natural language food entry using Google Gemini AI (`gemini-3.5-flash`). Describe what you ate in natural language (e.g. *"2 eggs, 50g oats, 200ml skim milk"*) and let AI estimate calories and macros.
 - **📜 AI Recipe & Prompt Preservation**: Save original AI prompt descriptions and recipe measurements directly into your Saved Meals Library to easily repeat meals later.
 - **📚 Saved Meals Library**: Store staple meals in a searchable library, featuring collapsible recipe details (`>` / `v`) and 1-click logging to your daily diary.
+- **💬 In-App Feedback & Screenshot Attachment**: Direct bug and improvement reporting with optional client-side compressed screenshot attachments stored in Cloud Firestore.
+- **✨ Soft Exercise Completion Transitions**: Polished set completion animations powered by `motion` with immediate visual feedback, illuminated badges, and gentle accordion compacting.
 - **⚡ Guest Mode & Local Storage**: Full offline/unauthenticated support using browser `localStorage` when not logged in, automatically syncing to Firebase Firestore upon Google Auth login.
 - **📊 Daily Nutrition Dashboard**: Real-time caloric and macro tracking (Protein, Carbs, Fats) against customized user goals.
 
