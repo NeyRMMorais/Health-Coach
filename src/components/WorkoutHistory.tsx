@@ -157,7 +157,7 @@ export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ history, onDelet
                               }`}
                             >
                               <div className="text-[10px] text-slate-500">
-                                Set {s.setNumber} {s.isWarmup && '(Warmup)'}
+                                Set {s.setNumber}
                               </div>
                               <div className="font-bold text-white">
                                 {s.weight} kg × {s.reps} reps

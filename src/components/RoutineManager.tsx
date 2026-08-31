@@ -7,6 +7,7 @@ import { DEFAULT_ROUTINES } from '../data/defaultRoutines';
 import { ExerciseLibraryModal } from './ExerciseLibraryModal';
 import { AiWorkoutArchitectModal } from './AiWorkoutArchitectModal';
 import { ReorderExercisesModal } from './ReorderExercisesModal';
+import { resolveStartingSets } from '../utils/workoutProgression';
 
 interface RoutineManagerProps {
   onStartWorkoutFromRoutine: (routineName: string, exercises: WorkoutExercise[]) => void;
@@ -362,19 +363,19 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
   const handleLaunchDayWorkout = (routineTitle: string, day: RoutineDay) => {
     if (!day.exercises || day.exercises.length === 0) return;
 
-    const initialWorkoutExercises: WorkoutExercise[] = day.exercises.map((item) => {
-      const isStretching = item.category === 'Stretching';
-      const initialWeight = isStretching ? 0 : 20;
+    const fullWorkoutName = `${routineTitle} • ${day.dayName}`;
 
-      const sets = Array.from({ length: item.targetSets }).map((_, idx) => ({
-        id: `set-${Date.now()}-${idx}`,
-        setNumber: idx + 1,
-        weight: initialWeight,
-        reps: item.targetReps,
-        rpe: 8,
-        completed: false,
-        isWarmup: idx === 0,
-      }));
+    const initialWorkoutExercises: WorkoutExercise[] = day.exercises.map((item) => {
+      const sets = resolveStartingSets(
+        item.exerciseId,
+        item.exerciseName,
+        item.category,
+        item.targetMuscleGroup,
+        item.targetSets,
+        item.targetReps,
+        fullWorkoutName,
+        workoutHistory
+      );
 
       return {
         exerciseId: item.exerciseId,
@@ -386,7 +387,7 @@ export const RoutineManager: React.FC<RoutineManagerProps> = ({ onStartWorkoutFr
       };
     });
 
-    onStartWorkoutFromRoutine(`${routineTitle} • ${day.dayName}`, initialWorkoutExercises);
+    onStartWorkoutFromRoutine(fullWorkoutName, initialWorkoutExercises);
   };
 
   return (

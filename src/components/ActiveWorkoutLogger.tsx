@@ -5,6 +5,7 @@ import { WorkoutLog, WorkoutExercise, ExerciseSet, Exercise, TargetMuscleGroup, 
 import { ExerciseLibraryModal } from './ExerciseLibraryModal';
 import { ExerciseDetailModal } from './ExerciseDetailModal';
 import { ReorderExercisesModal } from './ReorderExercisesModal';
+import { resolveStartingSets } from '../utils/workoutProgression';
 
 export const ACTIVE_WORKOUT_DRAFT_KEY = 'healthcoach_active_workout_draft';
 
@@ -136,15 +137,23 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
     }
     if (initialExercises.length > 0) {
       return initialExercises.map((ex) => {
-        const suggested = getSuggestedWeight(ex.exerciseId, ex.exerciseName, ex.category, ex.targetMuscleGroup);
+        const hasCustomData = ex.sets.some((s) => s.completed || (s.weight > 0 && s.reps > 0));
+        if (hasCustomData) return ex;
+
+        const resolvedSets = resolveStartingSets(
+          ex.exerciseId,
+          ex.exerciseName,
+          ex.category,
+          ex.targetMuscleGroup,
+          ex.sets.length || 3,
+          10,
+          workoutName,
+          workoutHistory
+        );
+
         return {
           ...ex,
-          sets: ex.sets.map((s) => ({
-            ...s,
-            weight: (s.weight === undefined || s.weight === 0) && ex.category !== 'Stretching'
-              ? suggested
-              : s.weight,
-          })),
+          sets: resolvedSets,
         };
       });
     }
@@ -417,13 +426,12 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
     const fallbackWeight = isStretching ? 0 : 20;
 
     const newSet: ExerciseSet = {
-      id: `set-${Date.now()}`,
+      id: `set-${Date.now()}-${targetEx.sets.length + 1}`,
       setNumber: targetEx.sets.length + 1,
       weight: lastSet ? (lastSet.weight ?? fallbackWeight) : fallbackWeight,
       reps: lastSet ? (lastSet.reps ?? 10) : 10,
       rpe: lastSet ? (lastSet.rpe ?? 8) : 8,
       completed: false,
-      isWarmup: false,
     };
 
     targetEx.sets.push(newSet);
@@ -452,18 +460,22 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
       const oldName = target.exerciseName;
       const oldId = target.exerciseId;
 
-      const suggestedWeight = getSuggestedWeight(selected.id, selected.name, selected.category, selected.targetMuscleGroup);
-      
+      const resolvedSets = resolveStartingSets(
+        selected.id,
+        selected.name,
+        selected.category,
+        selected.targetMuscleGroup,
+        target.sets.length || 3,
+        10,
+        workoutName,
+        workoutHistory
+      );
+
       target.exerciseId = selected.id;
       target.exerciseName = selected.name;
       target.targetMuscleGroup = selected.targetMuscleGroup;
       target.category = selected.category;
-
-      target.sets.forEach((s) => {
-        if (!s.completed) {
-          s.weight = suggestedWeight;
-        }
-      });
+      target.sets = resolvedSets;
 
       setExercises(updated);
       setReplacingExerciseIndex(null);
@@ -476,25 +488,24 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
         newExercise: selected,
       });
     } else {
-      // Adding new exercise with suggested weight
-      const suggestedWeight = getSuggestedWeight(selected.id, selected.name, selected.category, selected.targetMuscleGroup);
+      // Adding new exercise with resolved history
+      const resolvedSets = resolveStartingSets(
+        selected.id,
+        selected.name,
+        selected.category,
+        selected.targetMuscleGroup,
+        3,
+        10,
+        workoutName,
+        workoutHistory
+      );
 
       const newWorkoutEx: WorkoutExercise = {
         exerciseId: selected.id,
         exerciseName: selected.name,
         targetMuscleGroup: selected.targetMuscleGroup,
         category: selected.category,
-        sets: [
-          {
-            id: `set-${Date.now()}-1`,
-            setNumber: 1,
-            weight: suggestedWeight,
-            reps: 10,
-            rpe: 8,
-            completed: false,
-            isWarmup: false,
-          },
-        ],
+        sets: resolvedSets,
       };
 
       setExercises((prev) => [...prev, newWorkoutEx]);

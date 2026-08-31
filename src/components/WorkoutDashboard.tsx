@@ -9,6 +9,7 @@ import { ExerciseLibraryModal } from './ExerciseLibraryModal';
 import { WorkoutHistory } from './WorkoutHistory';
 import { BodyHeatmapView } from './BodyHeatmapView';
 import { WorkoutCompletionModal } from './WorkoutCompletionModal';
+import { resolveStartingSets } from '../utils/workoutProgression';
 
 interface WorkoutDashboardProps {
   user?: any;
@@ -334,28 +335,18 @@ export const WorkoutDashboard: React.FC<WorkoutDashboardProps> = ({ user: propUs
         isOpen={isLibraryOpen}
         onClose={() => setIsLibraryOpen(false)}
         onSelectExercise={(exercise) => {
-          const isStretching = exercise.category === 'Stretching' || exercise.targetMuscleGroup === 'Flexibility';
-          const isBodyweight = exercise.category === 'Bodyweight';
-          
-          let initialWeight = isStretching || isBodyweight ? 0 : 20;
-          if (!isStretching && !isBodyweight && history.length > 0) {
-            for (const log of history) {
-              const match = log.exercises.find((e) => e.exerciseId === exercise.id || e.exerciseName.toLowerCase() === exercise.name.toLowerCase());
-              if (match && match.sets.length > 0) {
-                const completedSets = match.sets.filter((s) => s.completed && s.weight !== undefined && s.weight !== null);
-                if (completedSets.length > 0) {
-                  initialWeight = completedSets[completedSets.length - 1].weight;
-                  break;
-                }
-                if (match.sets[0].weight !== undefined && match.sets[0].weight !== null) {
-                  initialWeight = match.sets[0].weight;
-                  break;
-                }
-              }
-            }
-          }
+          // If no active session, start a workout with this exercise using progression history
+          const sets = resolveStartingSets(
+            exercise.id,
+            exercise.name,
+            exercise.category,
+            exercise.targetMuscleGroup,
+            3,
+            10,
+            `${exercise.name} Session`,
+            history
+          );
 
-          // If no active session, start a workout with this exercise
           setActiveSession({
             name: `${exercise.name} Session`,
             exercises: [
@@ -364,17 +355,7 @@ export const WorkoutDashboard: React.FC<WorkoutDashboardProps> = ({ user: propUs
                 exerciseName: exercise.name,
                 targetMuscleGroup: exercise.targetMuscleGroup,
                 category: exercise.category,
-                sets: [
-                  {
-                    id: `set-${Date.now()}-1`,
-                    setNumber: 1,
-                    weight: initialWeight,
-                    reps: 10,
-                    rpe: 8,
-                    completed: false,
-                    isWarmup: false,
-                  },
-                ],
+                sets,
               },
             ],
           });

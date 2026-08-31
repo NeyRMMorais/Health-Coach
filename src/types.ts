@@ -69,7 +69,6 @@ export interface ExerciseSet {
   weight: number; // in kg
   reps: number;
   rpe?: number; // 1-10 rating of perceived exertion
-  isWarmup?: boolean;
   completed: boolean;
 }
 
