@@ -18,15 +18,15 @@ const GEMINI_MODELS = {
   nutritionEstimate:
     process.env.GEMINI_MODEL_NUTRITION_ESTIMATE ||
     geminiConfig.models.nutritionEstimate ||
-    "gemini-3.7-flash-lite",
+    "gemini-3.7-flash",
   mealSuggest:
     process.env.GEMINI_MODEL_MEAL_SUGGEST ||
     geminiConfig.models.mealSuggest ||
-    "gemini-3.7-flash-lite",
+    "gemini-3.7-flash",
   routineArchitect:
     process.env.GEMINI_MODEL_ROUTINE_ARCHITECT ||
     geminiConfig.models.routineArchitect ||
-    "gemini-3.7-flash-lite",
+    "gemini-3.7-flash",
 };
 
 // Initialize Gemini Client

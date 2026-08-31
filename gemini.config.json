@@ -1,9 +1,9 @@
 {
   "$comment": "Centralized Gemini AI model configuration for Health Coach. Edit model identifiers here to update AI features across the application.",
   "models": {
-    "nutritionEstimate": "gemini-3.7-flash-lite",
-    "mealSuggest": "gemini-3.7-flash-lite",
-    "routineArchitect": "gemini-3.7-flash-lite"
+    "nutritionEstimate": "gemini-3.7-flash",
+    "mealSuggest": "gemini-3.7-flash",
+    "routineArchitect": "gemini-3.7-flash"
   },
   "endpoints": {
     "nutritionEstimate": {
