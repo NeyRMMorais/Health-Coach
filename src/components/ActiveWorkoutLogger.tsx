@@ -440,6 +440,7 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
 
   const handleDeleteSet = (exIndex: number, setIndex: number) => {
     const updated = [...exercises];
+    if (updated[exIndex].sets.length <= 1) return;
     updated[exIndex].sets.splice(setIndex, 1);
     // Reindex set numbers
     updated[exIndex].sets.forEach((s, idx) => (s.setNumber = idx + 1));
@@ -982,73 +983,96 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
                     </div>
 
                     {/* Sets Table */}
-                    <div className="p-4 overflow-x-auto">
-                      <table className="w-full text-left border-collapse text-xs">
-                        <thead>
-                          <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px]">
-                            <th className="pb-2 text-center w-12">Set</th>
-                            <th className="pb-2 w-28">Weight (kg)</th>
-                            <th className="pb-2 w-24">Reps</th>
-                            <th className="pb-2 w-28">Target @RPE</th>
-                            <th className="pb-2 text-center w-14">Done</th>
-                            <th className="pb-2 text-center w-10"></th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-800/40">
-                          {ex.sets.map((s, setIndex) => {
-                            return (
-                              <tr
-                                key={s.id}
-                                className={`transition-all duration-150 ${
+                    {/* Sets Container */}
+                    <div className="p-3 sm:p-4">
+                      {/* Column Header */}
+                      <div className="grid grid-cols-[32px_1fr_1fr_auto_40px] gap-2 px-3 pb-2 text-slate-400 uppercase tracking-wider text-[10px] font-semibold border-b border-slate-800 mb-2">
+                        <div className="text-center">Set</div>
+                        <div>Weight (kg)</div>
+                        <div>Reps</div>
+                        <div>Target @RPE</div>
+                        <div className="text-center">Done</div>
+                      </div>
+
+                      {/* Sets List with Swipe to Delete */}
+                      <div className="space-y-2">
+                        {ex.sets.map((s, setIndex) => {
+                          return (
+                            <div key={s.id} className="relative overflow-hidden rounded-xl bg-red-600/90 shadow-sm group">
+                              {/* Background Delete Action revealed on swipe left */}
+                              <div className="absolute inset-y-0 right-0 w-20 flex items-center justify-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteSet(exIndex, setIndex)}
+                                  disabled={ex.sets.length <= 1}
+                                  className="w-full h-full flex flex-col items-center justify-center gap-0.5 text-white font-bold disabled:opacity-40"
+                                  title="Delete Set"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  <span className="text-[9px] uppercase tracking-wider font-bold">Delete</span>
+                                </button>
+                              </div>
+
+                              {/* Foreground Swipeable Set Row */}
+                              <motion.div
+                                drag={ex.sets.length > 1 ? "x" : false}
+                                dragConstraints={{ left: -76, right: 0 }}
+                                dragElastic={0.1}
+                                dragSnapToOrigin={false}
+                                className={`relative z-10 grid grid-cols-[32px_1fr_1fr_auto_40px] gap-2 items-center px-3 py-2 border rounded-xl transition-colors ${
                                   s.completed
-                                    ? 'bg-emerald-950/35 border-l-4 border-emerald-400 text-emerald-100'
-                                    : 'hover:bg-slate-850/50 text-slate-300'
+                                    ? 'bg-emerald-950/45 border-emerald-500/35 text-emerald-100'
+                                    : 'bg-slate-900 border-slate-800/80 text-slate-300'
                                 }`}
                               >
                                 {/* Set Number */}
-                                <td className={`py-2.5 text-center font-bold ${s.completed ? 'text-emerald-400' : 'text-slate-300'}`}>
+                                <div className={`text-center font-bold text-xs ${s.completed ? 'text-emerald-400' : 'text-slate-300'}`}>
                                   {s.setNumber}
-                                </td>
+                                </div>
 
-                                {/* Weight */}
-                                <td className="py-2.5 pr-2">
+                                {/* Weight Input with Zero Bug Fix */}
+                                <div>
                                   <input
                                     type="number"
                                     min="0"
                                     step="0.5"
-                                    value={s.weight !== undefined && s.weight !== null ? s.weight : ''}
+                                    placeholder="0"
+                                    value={s.weight === 0 ? '' : s.weight}
+                                    onFocus={(e) => e.target.select()}
                                     onChange={(e) => {
                                       const val = e.target.value === '' ? 0 : parseFloat(e.target.value);
                                       handleUpdateSet(exIndex, setIndex, 'weight', isNaN(val) ? 0 : val);
                                     }}
-                                    className={`w-20 border rounded-lg px-2.5 py-1.5 font-semibold focus:outline-none focus:border-emerald-500 transition-colors ${
+                                    className={`w-full max-w-[84px] border rounded-lg px-2.5 py-1.5 font-semibold text-xs focus:outline-none focus:border-emerald-500 transition-colors ${
                                       s.completed
                                         ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200'
-                                        : 'bg-slate-950 border-slate-800 text-white'
+                                        : 'bg-slate-950 border-slate-800 text-white placeholder-slate-600'
                                     }`}
                                   />
-                                </td>
+                                </div>
 
-                                {/* Reps */}
-                                <td className="py-2.5 pr-2">
+                                {/* Reps Input with Zero Bug Fix */}
+                                <div>
                                   <input
                                     type="number"
                                     min="0"
-                                    value={s.reps !== undefined && s.reps !== null ? s.reps : ''}
+                                    placeholder="0"
+                                    value={s.reps === 0 ? '' : s.reps}
+                                    onFocus={(e) => e.target.select()}
                                     onChange={(e) => {
-                                      const val = e.target.value === '' ? 0 : parseInt(e.target.value);
+                                      const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
                                       handleUpdateSet(exIndex, setIndex, 'reps', isNaN(val) ? 0 : val);
                                     }}
-                                    className={`w-16 border rounded-lg px-2.5 py-1.5 font-semibold focus:outline-none focus:border-emerald-500 transition-colors ${
+                                    className={`w-full max-w-[68px] border rounded-lg px-2.5 py-1.5 font-semibold text-xs focus:outline-none focus:border-emerald-500 transition-colors ${
                                       s.completed
                                         ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200'
-                                        : 'bg-slate-950 border-slate-800 text-white'
+                                        : 'bg-slate-950 border-slate-800 text-white placeholder-slate-600'
                                     }`}
                                   />
-                                </td>
+                                </div>
 
-                                {/* RPE */}
-                                <td className="py-2.5 pr-2">
+                                {/* RPE Dropdown */}
+                                <div>
                                   <select
                                     value={s.rpe || 8}
                                     onChange={(e) =>
@@ -1063,10 +1087,10 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
                                     <option value={9} className="bg-slate-900 text-amber-400 font-bold">@9 (1 RIR)</option>
                                     <option value={10} className="bg-slate-900 text-red-400 font-bold">@10 (Max)</option>
                                   </select>
-                                </td>
+                                </div>
 
                                 {/* Complete Checkbox */}
-                                <td className="py-2.5 text-center">
+                                <div className="text-center">
                                   <button
                                     type="button"
                                     onClick={() => handleToggleSetComplete(exIndex, setIndex)}
@@ -1078,31 +1102,27 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
                                   >
                                     <Check className="w-4 h-4" />
                                   </button>
-                                </td>
+                                </div>
+                              </motion.div>
+                            </div>
+                          );
+                        })}
+                      </div>
 
-                                {/* Delete Set */}
-                                <td className="py-2.5 text-center">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteSet(exIndex, setIndex)}
-                                    className="text-slate-600 hover:text-red-400 transition-colors p-1"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-
-                      <button
-                        onClick={() => handleAddSet(exIndex)}
-                        className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-emerald-400 text-xs font-semibold transition-colors"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        Add Set
-                      </button>
+                      <div className="flex items-center justify-between mt-3 pt-1">
+                        <button
+                          onClick={() => handleAddSet(exIndex)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-emerald-400 text-xs font-semibold transition-colors"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          Add Set
+                        </button>
+                        {ex.sets.length > 1 && (
+                          <span className="text-[10px] text-slate-500 italic">
+                            Swipe row left to delete
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </motion.div>
                 )}
