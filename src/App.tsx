@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   signInWithPopup,
@@ -92,6 +92,22 @@ export default function App() {
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
   const [isSavedMealsOpen, setIsSavedMealsOpen] = useState<boolean>(false);
+
+  // Keep selectedDate updated to today when app becomes visible if user was viewing today
+  const lastActiveDateRef = useRef<string>(new Date().toISOString().split('T')[0]);
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const currentToday = new Date().toISOString().split('T')[0];
+        if (selectedDate === lastActiveDateRef.current && currentToday !== selectedDate) {
+          setSelectedDate(currentToday);
+        }
+        lastActiveDateRef.current = currentToday;
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [selectedDate]);
 
   // Two-Level Navigation State with Per-Group Memory & Local Persistence
   const [activeGroup, setActiveGroup] = useState<string>(() => {

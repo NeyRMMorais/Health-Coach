@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Calendar, Trash2, Plus, Sparkles, AlertCircle, RefreshCw, Edit2, Check, X, Bookmark, ChevronLeft, ChevronRight } from 'lucide-react';
 import { FoodLog, UserProfile, SavedMeal } from '../types';
@@ -35,10 +35,43 @@ export default function FoodLogSection({
   const [protein, setProtein] = useState<string>('');
   const [carbs, setCarbs] = useState<string>('');
   const [fats, setFats] = useState<string>('');
-  const [time, setTime] = useState<string>(() => {
+  const getCurrentTimeString = () => {
     const now = new Date();
     return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-  });
+  };
+
+  const [time, setTime] = useState<string>(getCurrentTimeString);
+  const [isTimeManuallyEdited, setIsTimeManuallyEdited] = useState<boolean>(false);
+
+  // Synchronize time to "now" on mount, tab navigation, focus, or app resume
+  useEffect(() => {
+    const syncTimeToNow = () => {
+      if (!isTimeManuallyEdited) {
+        setTime(getCurrentTimeString());
+      }
+    };
+
+    // Immediate sync on mount / screen navigation
+    syncTimeToNow();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        syncTimeToNow();
+      }
+    };
+
+    const handleFocus = () => {
+      syncTimeToNow();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [isTimeManuallyEdited]);
 
   // Editing state
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
@@ -262,8 +295,8 @@ export default function FoodLogSection({
       setCarbs('');
       setFats('');
       setAiInput('');
-      const now = new Date();
-      setTime(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`);
+      setTime(getCurrentTimeString());
+      setIsTimeManuallyEdited(false);
     } catch (err: any) {
       console.error('Error logging food:', err);
       let errMsg = 'Failed to save food log to Firestore database.';
@@ -683,7 +716,10 @@ export default function FoodLogSection({
                 <input
                   type="time"
                   value={time}
-                  onChange={e => setTime(e.target.value)}
+                  onChange={e => {
+                    setTime(e.target.value);
+                    setIsTimeManuallyEdited(true);
+                  }}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-800 text-[11px] focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
                 />
               </div>
