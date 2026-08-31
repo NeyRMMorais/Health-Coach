@@ -67,6 +67,196 @@ const playCompletionBeep = () => {
   }
 };
 
+interface SwipeableSetRowProps {
+  s: ExerciseSet;
+  exIndex: number;
+  setIndex: number;
+  canDelete: boolean;
+  handleUpdateSet: (exIndex: number, setIndex: number, field: keyof ExerciseSet, value: any) => void;
+  handleToggleSetComplete: (exIndex: number, setIndex: number) => void;
+  handleDeleteSet: (exIndex: number, setIndex: number) => void;
+}
+
+const SwipeableSetRow: React.FC<SwipeableSetRowProps> = ({
+  s,
+  exIndex,
+  setIndex,
+  canDelete,
+  handleUpdateSet,
+  handleToggleSetComplete,
+  handleDeleteSet,
+}) => {
+  const [offsetX, setOffsetX] = useState(0);
+  const [isOpen, setIsOpen] = useState(false);
+  const pointerStartPos = useRef<{ x: number; y: number } | null>(null);
+  const isDragging = useRef(false);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (!e.isPrimary) return;
+    pointerStartPos.current = { x: e.clientX, y: e.clientY };
+    isDragging.current = false;
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!pointerStartPos.current || !canDelete) return;
+    const dx = e.clientX - pointerStartPos.current.x;
+    const dy = e.clientY - pointerStartPos.current.y;
+
+    // Trigger horizontal swipe mode when moved more horizontally than vertically
+    if (!isDragging.current && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) {
+      isDragging.current = true;
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+    }
+
+    if (isDragging.current) {
+      const base = isOpen ? -76 : 0;
+      const newOffset = Math.min(0, Math.max(-80, base + dx));
+      setOffsetX(newOffset);
+    }
+  };
+
+  const handlePointerUp = () => {
+    if (!pointerStartPos.current) return;
+
+    if (isDragging.current) {
+      if (offsetX < -35) {
+        setOffsetX(-76);
+        setIsOpen(true);
+      } else {
+        setOffsetX(0);
+        setIsOpen(false);
+      }
+    } else if (isOpen) {
+      setOffsetX(0);
+      setIsOpen(false);
+    }
+
+    pointerStartPos.current = null;
+    isDragging.current = false;
+  };
+
+  return (
+    <div className="relative overflow-hidden rounded-xl bg-red-600 shadow-sm my-1">
+      {/* Background Red Delete Button */}
+      {canDelete && (
+        <div className="absolute inset-y-0 right-0 w-20 flex items-center justify-center z-0">
+          <button
+            type="button"
+            onClick={() => {
+              handleDeleteSet(exIndex, setIndex);
+              setOffsetX(0);
+              setIsOpen(false);
+            }}
+            className="w-full h-full flex flex-col items-center justify-center gap-0.5 text-white font-bold cursor-pointer"
+            title="Delete Set"
+          >
+            <Trash2 className="w-4 h-4" />
+            <span className="text-[9px] uppercase tracking-wider font-bold">Delete</span>
+          </button>
+        </div>
+      )}
+
+      {/* Foreground Set Row */}
+      <div
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        style={{
+          transform: `translateX(${offsetX}px)`,
+          transition: isDragging.current ? 'none' : 'transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1)',
+        }}
+        className={`relative z-10 grid grid-cols-[32px_1fr_1fr_auto_40px] gap-2 items-center px-3 py-2 border rounded-xl touch-pan-y ${
+          s.completed
+            ? 'bg-emerald-950/45 border-emerald-500/35 text-emerald-100'
+            : 'bg-slate-900 border-slate-800/80 text-slate-300'
+        }`}
+      >
+        {/* Set Number */}
+        <div className={`text-center font-bold text-xs ${s.completed ? 'text-emerald-400' : 'text-slate-400'}`}>
+          {s.setNumber}
+        </div>
+
+        {/* Weight Input with Zero Bug Fix */}
+        <div>
+          <input
+            type="number"
+            min="0"
+            step="0.5"
+            placeholder="0"
+            value={s.weight === 0 ? '' : s.weight}
+            onFocus={(e) => e.target.select()}
+            onChange={(e) => {
+              const val = e.target.value === '' ? 0 : parseFloat(e.target.value);
+              handleUpdateSet(exIndex, setIndex, 'weight', isNaN(val) ? 0 : val);
+            }}
+            className={`w-full max-w-[84px] border rounded-lg px-2.5 py-1.5 font-semibold text-xs focus:outline-none focus:border-emerald-500 transition-colors ${
+              s.completed
+                ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200'
+                : 'bg-slate-950 border-slate-800 text-white placeholder-slate-600'
+            }`}
+          />
+        </div>
+
+        {/* Reps Input with Zero Bug Fix */}
+        <div>
+          <input
+            type="number"
+            min="0"
+            placeholder="0"
+            value={s.reps === 0 ? '' : s.reps}
+            onFocus={(e) => e.target.select()}
+            onChange={(e) => {
+              const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
+              handleUpdateSet(exIndex, setIndex, 'reps', isNaN(val) ? 0 : val);
+            }}
+            className={`w-full max-w-[68px] border rounded-lg px-2.5 py-1.5 font-semibold text-xs focus:outline-none focus:border-emerald-500 transition-colors ${
+              s.completed
+                ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200'
+                : 'bg-slate-950 border-slate-800 text-white placeholder-slate-600'
+            }`}
+          />
+        </div>
+
+        {/* RPE Dropdown */}
+        <div>
+          <select
+            value={s.rpe || 8}
+            onChange={(e) =>
+              handleUpdateSet(exIndex, setIndex, 'rpe', parseInt(e.target.value) || 8)
+            }
+            className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs font-semibold text-emerald-400 focus:outline-none focus:border-emerald-500 cursor-pointer shadow-inner"
+            title={`@${s.rpe || 8} (${10 - (s.rpe || 8)} RIR)`}
+          >
+            <option value={6} className="bg-slate-900 text-slate-200">@6 (4 RIR)</option>
+            <option value={7} className="bg-slate-900 text-slate-200">@7 (3 RIR)</option>
+            <option value={8} className="bg-slate-900 text-emerald-400 font-bold">@8 (2 RIR)</option>
+            <option value={9} className="bg-slate-900 text-amber-400 font-bold">@9 (1 RIR)</option>
+            <option value={10} className="bg-slate-900 text-red-400 font-bold">@10 (Max)</option>
+          </select>
+        </div>
+
+        {/* Complete Checkbox */}
+        <div className="text-center">
+          <button
+            type="button"
+            onClick={() => handleToggleSetComplete(exIndex, setIndex)}
+            className={`w-7 h-7 rounded-lg flex items-center justify-center mx-auto transition-all ${
+              s.completed
+                ? 'bg-emerald-500 text-slate-950 font-bold shadow-md shadow-emerald-500/30 scale-105'
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-400 hover:scale-105'
+            }`}
+          >
+            <Check className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
   initialWorkoutName = 'Custom Workout',
   initialExercises = [],
@@ -994,119 +1184,20 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
                         <div className="text-center">Done</div>
                       </div>
 
-                      {/* Sets List with Swipe to Delete */}
+                      {/* Sets List with Universal Swipe to Delete */}
                       <div className="space-y-2">
-                        {ex.sets.map((s, setIndex) => {
-                          return (
-                            <div key={s.id} className="relative overflow-hidden rounded-xl bg-red-600/90 shadow-sm group">
-                              {/* Background Delete Action revealed on swipe left */}
-                              <div className="absolute inset-y-0 right-0 w-20 flex items-center justify-center">
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteSet(exIndex, setIndex)}
-                                  disabled={ex.sets.length <= 1}
-                                  className="w-full h-full flex flex-col items-center justify-center gap-0.5 text-white font-bold disabled:opacity-40"
-                                  title="Delete Set"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                  <span className="text-[9px] uppercase tracking-wider font-bold">Delete</span>
-                                </button>
-                              </div>
-
-                              {/* Foreground Swipeable Set Row */}
-                              <motion.div
-                                drag={ex.sets.length > 1 ? "x" : false}
-                                dragConstraints={{ left: -76, right: 0 }}
-                                dragElastic={0.1}
-                                dragSnapToOrigin={false}
-                                className={`relative z-10 grid grid-cols-[32px_1fr_1fr_auto_40px] gap-2 items-center px-3 py-2 border rounded-xl transition-colors ${
-                                  s.completed
-                                    ? 'bg-emerald-950/45 border-emerald-500/35 text-emerald-100'
-                                    : 'bg-slate-900 border-slate-800/80 text-slate-300'
-                                }`}
-                              >
-                                {/* Set Number */}
-                                <div className={`text-center font-bold text-xs ${s.completed ? 'text-emerald-400' : 'text-slate-300'}`}>
-                                  {s.setNumber}
-                                </div>
-
-                                {/* Weight Input with Zero Bug Fix */}
-                                <div>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    step="0.5"
-                                    placeholder="0"
-                                    value={s.weight === 0 ? '' : s.weight}
-                                    onFocus={(e) => e.target.select()}
-                                    onChange={(e) => {
-                                      const val = e.target.value === '' ? 0 : parseFloat(e.target.value);
-                                      handleUpdateSet(exIndex, setIndex, 'weight', isNaN(val) ? 0 : val);
-                                    }}
-                                    className={`w-full max-w-[84px] border rounded-lg px-2.5 py-1.5 font-semibold text-xs focus:outline-none focus:border-emerald-500 transition-colors ${
-                                      s.completed
-                                        ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200'
-                                        : 'bg-slate-950 border-slate-800 text-white placeholder-slate-600'
-                                    }`}
-                                  />
-                                </div>
-
-                                {/* Reps Input with Zero Bug Fix */}
-                                <div>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    placeholder="0"
-                                    value={s.reps === 0 ? '' : s.reps}
-                                    onFocus={(e) => e.target.select()}
-                                    onChange={(e) => {
-                                      const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
-                                      handleUpdateSet(exIndex, setIndex, 'reps', isNaN(val) ? 0 : val);
-                                    }}
-                                    className={`w-full max-w-[68px] border rounded-lg px-2.5 py-1.5 font-semibold text-xs focus:outline-none focus:border-emerald-500 transition-colors ${
-                                      s.completed
-                                        ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200'
-                                        : 'bg-slate-950 border-slate-800 text-white placeholder-slate-600'
-                                    }`}
-                                  />
-                                </div>
-
-                                {/* RPE Dropdown */}
-                                <div>
-                                  <select
-                                    value={s.rpe || 8}
-                                    onChange={(e) =>
-                                      handleUpdateSet(exIndex, setIndex, 'rpe', parseInt(e.target.value) || 8)
-                                    }
-                                    className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs font-semibold text-emerald-400 focus:outline-none focus:border-emerald-500 cursor-pointer shadow-inner"
-                                    title={`@${s.rpe || 8} (${10 - (s.rpe || 8)} RIR)`}
-                                  >
-                                    <option value={6} className="bg-slate-900 text-slate-200">@6 (4 RIR)</option>
-                                    <option value={7} className="bg-slate-900 text-slate-200">@7 (3 RIR)</option>
-                                    <option value={8} className="bg-slate-900 text-emerald-400 font-bold">@8 (2 RIR)</option>
-                                    <option value={9} className="bg-slate-900 text-amber-400 font-bold">@9 (1 RIR)</option>
-                                    <option value={10} className="bg-slate-900 text-red-400 font-bold">@10 (Max)</option>
-                                  </select>
-                                </div>
-
-                                {/* Complete Checkbox */}
-                                <div className="text-center">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleToggleSetComplete(exIndex, setIndex)}
-                                    className={`w-7 h-7 rounded-lg flex items-center justify-center mx-auto transition-all ${
-                                      s.completed
-                                        ? 'bg-emerald-500 text-slate-950 font-bold shadow-md shadow-emerald-500/30 scale-105'
-                                        : 'bg-slate-800 hover:bg-slate-700 text-slate-400 hover:scale-105'
-                                    }`}
-                                  >
-                                    <Check className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              </motion.div>
-                            </div>
-                          );
-                        })}
+                        {ex.sets.map((s, setIndex) => (
+                          <SwipeableSetRow
+                            key={s.id}
+                            s={s}
+                            exIndex={exIndex}
+                            setIndex={setIndex}
+                            canDelete={ex.sets.length > 1}
+                            handleUpdateSet={handleUpdateSet}
+                            handleToggleSetComplete={handleToggleSetComplete}
+                            handleDeleteSet={handleDeleteSet}
+                          />
+                        ))}
                       </div>
 
                       <div className="flex items-center justify-between mt-3 pt-1">
