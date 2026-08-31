@@ -3,13 +3,31 @@ import path from "path";
 import dotenv from "dotenv";
 import { GoogleGenAI, Type } from "@google/genai";
 import { createServer as createViteServer } from "vite";
+import geminiConfig from "./gemini.config.json";
 
 dotenv.config();
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: "15mb" }));
+app.use(express.urlencoded({ extended: true, limit: "15mb" }));
 
 const PORT = parseInt(process.env.PORT || "3000");
+
+// Centralized Gemini Model Configuration with optional .env overrides
+const GEMINI_MODELS = {
+  nutritionEstimate:
+    process.env.GEMINI_MODEL_NUTRITION_ESTIMATE ||
+    geminiConfig.models.nutritionEstimate ||
+    "gemini-3.7-flash-lite",
+  mealSuggest:
+    process.env.GEMINI_MODEL_MEAL_SUGGEST ||
+    geminiConfig.models.mealSuggest ||
+    "gemini-3.7-flash-lite",
+  routineArchitect:
+    process.env.GEMINI_MODEL_ROUTINE_ARCHITECT ||
+    geminiConfig.models.routineArchitect ||
+    "gemini-3.7-flash-lite",
+};
 
 // Initialize Gemini Client
 const ai = new GoogleGenAI({
@@ -87,23 +105,51 @@ function fallbackSuggestMeals(goal: string, mealType: string) {
   ];
 }
 
-// Endpoint to estimate nutrition macros from text
+// Endpoint to estimate nutrition macros from text, photo, or both
 app.post("/api/gemini/estimate", async (req, res) => {
-  const { query } = req.body;
-  if (!query || typeof query !== "string") {
-    return res.status(400).json({ error: "Missing or invalid query parameter" });
+  const { query, image } = req.body;
+  const hasQuery = query && typeof query === "string" && query.trim().length > 0;
+  const hasImage = image && typeof image === "object" && typeof image.data === "string" && image.data.length > 0;
+
+  if (!hasQuery && !hasImage) {
+    return res.status(400).json({ error: "Please provide a meal description, a photo, or both." });
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
     console.log("No valid GEMINI_API_KEY found, using local smart nutrition fallback.");
-    return res.json(fallbackEstimate(query));
+    return res.json(fallbackEstimate(hasQuery ? query : "Plate of food"));
   }
 
   try {
+    const contents: any[] = [];
+
+    // If an image was attached, include it as inlineData
+    if (hasImage) {
+      const mimeType = image.mimeType || "image/jpeg";
+      const base64Clean = image.data.replace(/^data:[^;]+;base64,/, "");
+      contents.push({
+        inlineData: {
+          data: base64Clean,
+          mimeType: mimeType,
+        },
+      });
+    }
+
+    let promptText = "";
+    if (hasImage && hasQuery) {
+      promptText = `You are an expert nutritionist. Analyze this meal photo along with the user's notes: "${query.trim()}". Identify all items, estimated portion sizes, and calculate total energy in calories (kcal) and macronutrients (protein, carbs, fats in grams). Give a concise descriptive name for the meal as "name" (e.g. "Grilled Chicken Salad with Quinoa").`;
+    } else if (hasImage) {
+      promptText = `You are an expert nutritionist. Analyze this meal photo. Identify the visible food items, ingredients, and estimated portion sizes on the plate. Estimate total energy in calories (kcal) and macronutrients (protein, carbs, fats in grams). Give a concise descriptive name for the meal as "name" (e.g. "Salmon Fillet with Steamed Greens").`;
+    } else {
+      promptText = `Estimate the calories (kcal) and macronutrients (protein, carbs, fats in grams) for this meal: "${query.trim()}". Provide a reasonable single food name or short summary as "name".`;
+    }
+
+    contents.push(promptText);
+
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash-lite",
-      contents: `Estimate the calories (kcal) and macronutrients (protein, carbs, fats in grams) for this meal: "${query}". Provide a reasonable single food name or short summary as "name".`,
+      model: GEMINI_MODELS.nutritionEstimate,
+      contents,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -129,7 +175,7 @@ app.post("/api/gemini/estimate", async (req, res) => {
     res.json(parsed);
   } catch (error) {
     console.error("Error in /api/gemini/estimate, falling back to local estimator:", error);
-    res.json(fallbackEstimate(query));
+    res.json(fallbackEstimate(hasQuery ? query : "Plate of food"));
   }
 });
 
@@ -156,7 +202,7 @@ app.post("/api/gemini/suggest-meals", async (req, res) => {
 Provide clear, structured recipes. Make sure preparation times, calories, and macros are realistic.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: GEMINI_MODELS.mealSuggest,
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -338,7 +384,7 @@ Rules:
 4. For workout days, extract all exercises with targetMuscleGroup ('Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Full Body'), category ('Barbell', 'Dumbbell', 'Machine', 'Cable', 'Bodyweight'), targetSets (number, default 3), targetReps (number, default 10), and targetRestSeconds (number, default 90).`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: GEMINI_MODELS.routineArchitect,
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -438,6 +484,10 @@ async function start() {
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://0.0.0.0:${PORT}`);
+    console.log(`[Gemini AI Config] Active models:`);
+    console.log(` - Nutrition Estimate (/api/gemini/estimate): ${GEMINI_MODELS.nutritionEstimate}`);
+    console.log(` - Meal Suggester (/api/gemini/suggest-meals): ${GEMINI_MODELS.mealSuggest}`);
+    console.log(` - Routine Architect (/api/gemini/parse-routine): ${GEMINI_MODELS.routineArchitect}`);
   });
 }
 

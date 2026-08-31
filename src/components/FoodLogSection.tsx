@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Calendar, Trash2, Plus, Sparkles, AlertCircle, RefreshCw, Edit2, Check, X, Bookmark, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Trash2, Plus, Sparkles, AlertCircle, RefreshCw, Edit2, Check, X, Bookmark, ChevronLeft, ChevronRight, Camera, Paperclip } from 'lucide-react';
 import { FoodLog, UserProfile, SavedMeal } from '../types';
 
 interface FoodLogSectionProps {
@@ -80,12 +80,83 @@ export default function FoodLogSection({
   const [editError, setEditError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
-  // AI assistant input
+  // AI assistant input & image attachment
   const [aiInput, setAiInput] = useState<string>('');
   const [aiPromptUsed, setAiPromptUsed] = useState<string>('');
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [isRecipeSaved, setIsRecipeSaved] = useState<boolean>(false);
+  const [selectedImage, setSelectedImage] = useState<{ dataUrl: string; name: string; sizeKb: number } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Client-side image downscaling & compression helper (max 1024x1024, quality 0.8)
+  const compressImage = (file: File): Promise<{ dataUrl: string; name: string; sizeKb: number }> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX_WIDTH = 1024;
+          const MAX_HEIGHT = 1024;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height = Math.round((height * MAX_WIDTH) / width);
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width = Math.round((width * MAX_HEIGHT) / height);
+              height = MAX_HEIGHT;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Canvas context unavailable'));
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          const approxSizeKb = Math.round((dataUrl.length * 3) / 4 / 1024);
+
+          resolve({
+            dataUrl,
+            name: file.name || 'photo.jpg',
+            sizeKb: approxSizeKb,
+          });
+        };
+        img.onerror = () => reject(new Error('Failed to decode image'));
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    try {
+      const compressed = await compressImage(file);
+      setSelectedImage(compressed);
+      setAiError(null);
+    } catch (err) {
+      console.error('Image compression failed', err);
+      setAiError('Could not process the selected image. Please try another picture.');
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   // Saved Meals Library tracking
   const [savedToLibraryIds, setSavedToLibraryIds] = useState<string[]>([]);
@@ -222,7 +293,7 @@ export default function FoodLogSection({
   const totals = getMealSummary(filteredLogs);
 
   const handleAiAnalyze = async () => {
-    if (!aiInput.trim()) return;
+    if (!aiInput.trim() && !selectedImage) return;
     setIsAnalyzing(true);
     setAiError(null);
 
@@ -230,15 +301,29 @@ export default function FoodLogSection({
       const res = await fetch('/api/gemini/estimate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: aiInput })
+        body: JSON.stringify({
+          query: aiInput.trim(),
+          image: selectedImage
+            ? {
+                data: selectedImage.dataUrl,
+                mimeType: 'image/jpeg',
+              }
+            : undefined,
+        }),
       });
 
       if (!res.ok) {
-        throw new Error('Failed to estimate calories from description.');
+        throw new Error('Failed to estimate calories from meal.');
       }
 
       const parsed = await res.json();
-      setAiPromptUsed(aiInput.trim());
+      const promptRecord = selectedImage && aiInput.trim()
+        ? `[Photo + Notes] ${aiInput.trim()}`
+        : selectedImage
+        ? `[Photo of Meal]`
+        : aiInput.trim();
+
+      setAiPromptUsed(promptRecord);
       setIsRecipeSaved(false);
       setName(parsed.name || '');
       setCalories(String(parsed.calories ?? ''));
@@ -250,7 +335,7 @@ export default function FoodLogSection({
       setActiveTab('manual');
     } catch (err) {
       console.error(err);
-      setAiError('Gemini could not analyze this description. Please try again or log manually.');
+      setAiError('Gemini could not analyze this meal. Please try again or log manually.');
     } finally {
       setIsAnalyzing(false);
     }
@@ -295,6 +380,7 @@ export default function FoodLogSection({
       setCarbs('');
       setFats('');
       setAiInput('');
+      setSelectedImage(null);
       setTime(getCurrentTimeString());
       setIsTimeManuallyEdited(false);
     } catch (err: any) {
@@ -628,14 +714,60 @@ export default function FoodLogSection({
               <textarea
                 value={aiInput}
                 onChange={e => setAiInput(e.target.value)}
-                placeholder="E.g., I ate 2 scrambled eggs, a slice of multigrain bread, and half an avocado."
-                rows={4}
+                placeholder={
+                  selectedImage
+                    ? "Optional: Add notes (e.g. 'Ate half', 'Low carb wrap') or leave empty to analyze picture."
+                    : "E.g., I ate 2 scrambled eggs, a slice of multigrain bread, and half an avocado."
+                }
+                rows={3}
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 transition resize-none"
               />
+
+              {/* Hidden native file input for camera & photo gallery */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept="image/*"
+                className="hidden"
+              />
+
+              {/* Annex a picture pill & attached badge */}
+              <div className="mt-2 flex items-center flex-wrap gap-2">
+                {!selectedImage ? (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full text-xs font-medium transition cursor-pointer border border-slate-200/80 shadow-2xs hover:border-slate-300 active:scale-98"
+                  >
+                    <Camera className="h-3.5 w-3.5 text-emerald-600" />
+                    <span>Annex a picture</span>
+                  </button>
+                ) : (
+                  <div className="inline-flex items-center gap-2 pl-1.5 pr-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-full text-xs font-medium shadow-2xs">
+                    <img
+                      src={selectedImage.dataUrl}
+                      alt="Annexed meal"
+                      className="w-5 h-5 rounded-full object-cover border border-emerald-300"
+                    />
+                    <span className="truncate max-w-[170px] text-[11px]">
+                      {selectedImage.name} ({selectedImage.sizeKb}KB)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedImage(null)}
+                      className="text-emerald-700 hover:text-emerald-950 ml-0.5 p-0.5 rounded-full hover:bg-emerald-100 transition"
+                      title="Remove picture"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
             <button
               onClick={handleAiAnalyze}
-              disabled={isAnalyzing || !aiInput.trim()}
+              disabled={isAnalyzing || (!aiInput.trim() && !selectedImage)}
               className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg py-2 text-xs transition flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
             >
               {isAnalyzing ? (
@@ -651,7 +783,7 @@ export default function FoodLogSection({
               )}
             </button>
             <p className="text-[10px] text-slate-400 text-center leading-relaxed">
-              Gemini will estimate calories and macros from your natural description, then load them so you can review and log!
+              Gemini will estimate calories and macros from your picture, natural description, or both, then load them so you can review and log!
             </p>
           </div>
         )}

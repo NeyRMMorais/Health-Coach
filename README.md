@@ -34,7 +34,7 @@ An intelligent, AI-powered health and nutrition coach application built with Rea
   - **Multi-Day Schedule Routines**: Build training programs with multi-day structures (Workout Sessions, Cardio Days, Rest Days) and persistent template deletion.
   - **🗺️ Anatomical Muscle Heatmap & Recovery Visualizer**: High-fidelity 2D vector anatomical body diagram (Front Anterior & Back Posterior views) with 7-day fatigue calculations, localized recovery levels (Fresh, Recovering, Fatigued), and AI readiness recommendations.
   - **Exercise Library**: Searchable catalog filtered by muscle group and category with custom exercise creation.
-- **🤖 AI Quick Log**: Natural language food entry using Google Gemini AI (`gemini-3.5-flash`). Describe what you ate in natural language (e.g. *"2 eggs, 50g oats, 200ml skim milk"*) and let AI estimate calories and macros.
+- **🤖 AI Quick Log**: Natural language food entry using Google Gemini AI (`gemini-3.7-flash-lite`, centrally configurable via [`gemini.config.json`](./gemini.config.json)). Describe what you ate in natural language (e.g. *"2 eggs, 50g oats, 200ml skim milk"*) and let AI estimate calories and macros.
 - **📜 AI Recipe & Prompt Preservation**: Save original AI prompt descriptions and recipe measurements directly into your Saved Meals Library to easily repeat meals later.
 - **📚 Saved Meals Library**: Store staple meals in a searchable library, featuring collapsible recipe details (`>` / `v`) and 1-click logging to your daily diary.
 - **💬 In-App Feedback & Screenshot Attachment**: Direct bug and improvement reporting with optional client-side compressed screenshot attachments stored in Cloud Firestore.

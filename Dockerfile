@@ -13,6 +13,7 @@ ENV PORT=8080
 COPY package*.json ./
 RUN npm install --only=production
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/gemini.config.json ./gemini.config.json
 
 EXPOSE 8080
 CMD ["node", "dist/server.cjs"]
