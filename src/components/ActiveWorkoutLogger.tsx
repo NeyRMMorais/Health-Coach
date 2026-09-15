@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Play, Pause, Plus, Trash2, Check, Clock, Dumbbell, Award, RotateCcw, ChevronRight, ChevronDown, X, Volume2, AlertTriangle, ArrowLeftRight, GripVertical, Info, FileText, CheckCircle2 } from 'lucide-react';
-import { WorkoutLog, WorkoutExercise, ExerciseSet, Exercise, TargetMuscleGroup, ExerciseCategory } from '../types';
+import { Play, Pause, Plus, Trash2, Check, Clock, Dumbbell, Award, RotateCcw, ChevronRight, ChevronDown, X, Volume2, AlertTriangle, ArrowLeftRight, GripVertical, Info, FileText, CheckCircle2, Save } from 'lucide-react';
+import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '../firebase';
+import { WorkoutLog, WorkoutExercise, ExerciseSet, Exercise, TargetMuscleGroup, ExerciseCategory, WorkoutRoutine } from '../types';
 import { ExerciseLibraryModal } from './ExerciseLibraryModal';
 import { ExerciseDetailModal } from './ExerciseDetailModal';
 import { ReorderExercisesModal } from './ReorderExercisesModal';
@@ -138,10 +140,10 @@ const SwipeableSetRow: React.FC<SwipeableSetRowProps> = ({
   };
 
   return (
-    <div className="relative overflow-hidden rounded-xl bg-red-600 shadow-sm my-1">
+    <div className="relative overflow-hidden rounded-xl bg-slate-950 shadow-sm my-1">
       {/* Background Red Delete Button */}
       {canDelete && (
-        <div className="absolute inset-y-0 right-0 w-20 flex items-center justify-center z-0">
+        <div className="absolute inset-y-0 right-0 w-20 bg-red-600 flex items-center justify-center z-0">
           <button
             type="button"
             onClick={() => {
@@ -170,7 +172,7 @@ const SwipeableSetRow: React.FC<SwipeableSetRowProps> = ({
         }}
         className={`relative z-10 grid grid-cols-[32px_1fr_1fr_auto_40px] gap-2 items-center px-3 py-2 border rounded-xl touch-pan-y ${
           s.completed
-            ? 'bg-emerald-950/45 border-emerald-500/35 text-emerald-100'
+            ? 'bg-[#062c1d] border-emerald-500/40 text-emerald-100 shadow-[inset_0_0_12px_rgba(16,185,129,0.12)]'
             : 'bg-slate-900 border-slate-800/80 text-slate-300'
         }`}
       >
@@ -194,7 +196,7 @@ const SwipeableSetRow: React.FC<SwipeableSetRowProps> = ({
             }}
             className={`w-full max-w-[84px] border rounded-lg px-2.5 py-1.5 font-semibold text-xs focus:outline-none focus:border-emerald-500 transition-colors ${
               s.completed
-                ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200'
+                ? 'bg-[#031d13] border-emerald-500/40 text-emerald-200'
                 : 'bg-slate-950 border-slate-800 text-white placeholder-slate-600'
             }`}
           />
@@ -214,7 +216,7 @@ const SwipeableSetRow: React.FC<SwipeableSetRowProps> = ({
             }}
             className={`w-full max-w-[68px] border rounded-lg px-2.5 py-1.5 font-semibold text-xs focus:outline-none focus:border-emerald-500 transition-colors ${
               s.completed
-                ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200'
+                ? 'bg-[#031d13] border-emerald-500/40 text-emerald-200'
                 : 'bg-slate-950 border-slate-800 text-white placeholder-slate-600'
             }`}
           />
@@ -703,37 +705,101 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
     }
   };
 
-  const handleUpdateRoutinePermanently = () => {
+  const [sessionRoutineSaved, setSessionRoutineSaved] = useState<boolean>(false);
+
+  const handleUpdateRoutinePermanently = async () => {
     if (!permanentReplacePill) return;
     try {
-      const savedRoutinesRaw = localStorage.getItem('workout_routines');
-      if (savedRoutinesRaw) {
-        const routines = JSON.parse(savedRoutinesRaw);
-        let modified = false;
-        routines.forEach((r: any) => {
-          r.days?.forEach((d: any) => {
-            d.exercises?.forEach((exItem: any) => {
-              if (
-                exItem.exerciseId === permanentReplacePill.oldId ||
-                exItem.exerciseName?.toLowerCase() === permanentReplacePill.oldName.toLowerCase()
-              ) {
-                exItem.exerciseId = permanentReplacePill.newExercise.id;
-                exItem.exerciseName = permanentReplacePill.newExercise.name;
-                exItem.targetMuscleGroup = permanentReplacePill.newExercise.targetMuscleGroup;
-                exItem.category = permanentReplacePill.newExercise.category;
-                modified = true;
-              }
+      ['custom_routines', 'workout_routines'].forEach(async (storageKey) => {
+        const savedRoutinesRaw = localStorage.getItem(storageKey);
+        if (!savedRoutinesRaw) return;
+        try {
+          const routines: any[] = JSON.parse(savedRoutinesRaw);
+          let modified = false;
+          let modifiedRoutine: any = null;
+
+          routines.forEach((r: any) => {
+            r.days?.forEach((d: any) => {
+              d.exercises?.forEach((exItem: any) => {
+                if (
+                  exItem.exerciseId === permanentReplacePill.oldId ||
+                  exItem.exerciseName?.toLowerCase() === permanentReplacePill.oldName.toLowerCase()
+                ) {
+                  exItem.exerciseId = permanentReplacePill.newExercise.id;
+                  exItem.exerciseName = permanentReplacePill.newExercise.name;
+                  exItem.targetMuscleGroup = permanentReplacePill.newExercise.targetMuscleGroup;
+                  exItem.category = permanentReplacePill.newExercise.category;
+                  modified = true;
+                  modifiedRoutine = r;
+                }
+              });
             });
           });
-        });
-        if (modified) {
-          localStorage.setItem('workout_routines', JSON.stringify(routines));
-        }
-      }
+
+          if (modified) {
+            localStorage.setItem(storageKey, JSON.stringify(routines));
+            const user = auth.currentUser;
+            if (user && modifiedRoutine && modifiedRoutine.id) {
+              const ref = doc(db, `users/${user.uid}/workoutRoutines`, modifiedRoutine.id);
+              await setDoc(ref, { ...modifiedRoutine, updatedAt: serverTimestamp() }, { merge: true });
+            }
+          }
+        } catch (e) {}
+      });
     } catch (e) {
       console.error('Failed to update permanent routine', e);
     }
     setPermanentReplacePill(null);
+  };
+
+  const handleSaveSessionToRoutineTemplate = async () => {
+    try {
+      const parts = workoutName.split(' • ');
+      const rTitle = parts[0]?.trim();
+      const dName = parts[1]?.trim();
+
+      const savedCustom = localStorage.getItem('custom_routines');
+      let customRoutines: WorkoutRoutine[] = savedCustom ? JSON.parse(savedCustom) : [];
+      let matchedRoutine: WorkoutRoutine | null = null;
+
+      customRoutines = customRoutines.map((r) => {
+        if (!rTitle || r.title.toLowerCase() === rTitle.toLowerCase()) {
+          const newDays = (r.days || []).map((d) => {
+            if (!dName || d.dayName.toLowerCase() === dName.toLowerCase()) {
+              return {
+                ...d,
+                exercises: exercises.map((ex) => ({
+                  exerciseId: ex.exerciseId,
+                  exerciseName: ex.exerciseName,
+                  targetMuscleGroup: ex.targetMuscleGroup,
+                  category: ex.category,
+                  targetSets: ex.sets.length || 3,
+                  targetReps: ex.sets[0]?.reps || 10,
+                  targetRestSeconds: ex.restSeconds || 90,
+                })),
+              };
+            }
+            return d;
+          });
+          matchedRoutine = { ...r, days: newDays };
+          return matchedRoutine;
+        }
+        return r;
+      });
+
+      if (matchedRoutine) {
+        localStorage.setItem('custom_routines', JSON.stringify(customRoutines));
+        const user = auth.currentUser;
+        if (user) {
+          const ref = doc(db, `users/${user.uid}/workoutRoutines`, (matchedRoutine as WorkoutRoutine).id);
+          await setDoc(ref, { ...(matchedRoutine as WorkoutRoutine), updatedAt: serverTimestamp() }, { merge: true });
+        }
+        setSessionRoutineSaved(true);
+        setTimeout(() => setSessionRoutineSaved(false), 3000);
+      }
+    } catch (e) {
+      console.error('Failed to save session to routine template', e);
+    }
   };
 
   const handleFinish = () => {
@@ -794,8 +860,8 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-24">
-      {/* Top Header Bar */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 sm:p-5 shadow-xl sticky top-2 sm:top-4 z-30 backdrop-blur-md bg-slate-900/95 space-y-3">
+      {/* Top Header Bar with safe sticky offset below main navbar */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 sm:p-5 shadow-xl sticky top-[4.5rem] sm:top-[4.75rem] z-30 backdrop-blur-md bg-slate-900/95 space-y-3">
         {/* Row 1: Workout Title & Live Session Stats */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/60 pb-2.5">
           <div className="space-y-0.5 min-w-0">
@@ -825,6 +891,20 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
 
           {/* Quick Header Badges & Actions on sm+ screens */}
           <div className="hidden sm:flex items-center gap-2">
+            {workoutName.includes(' • ') && (
+              <button
+                onClick={handleSaveSessionToRoutineTemplate}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                  sessionRoutineSaved
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    : 'text-slate-400 hover:text-emerald-400 hover:bg-slate-800'
+                }`}
+                title="Save current exercise changes back to the routine template"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{sessionRoutineSaved ? 'Routine Updated!' : 'Update Routine'}</span>
+              </button>
+            )}
             {exercises.length > 1 && (
               <button
                 onClick={() => setIsReorderModalOpen(true)}
@@ -854,6 +934,19 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-2.5">
           {/* Mobile Secondary Action Icons (visible on mobile only) */}
           <div className="flex sm:hidden items-center gap-1.5">
+            {workoutName.includes(' • ') && (
+              <button
+                onClick={handleSaveSessionToRoutineTemplate}
+                className={`p-2 rounded-xl transition-colors ${
+                  sessionRoutineSaved
+                    ? 'bg-emerald-500/20 text-emerald-300'
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                }`}
+                title="Save current exercise changes back to routine template"
+              >
+                <Save className="w-4 h-4 text-emerald-400" />
+              </button>
+            )}
             {exercises.length > 1 && (
               <button
                 onClick={() => setIsReorderModalOpen(true)}
@@ -1245,6 +1338,11 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
           setReplacingExerciseIndex(null);
         }}
         onSelectExercise={handleSelectExerciseFromLibrary}
+        initialMuscleFilter={
+          replacingExerciseIndex !== null && exercises[replacingExerciseIndex]
+            ? exercises[replacingExerciseIndex].targetMuscleGroup
+            : undefined
+        }
       />
 
       {/* 3-Tab Exercise Detail Modal (Instructions, Notes, History) */}

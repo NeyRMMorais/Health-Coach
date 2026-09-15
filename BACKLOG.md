@@ -10,10 +10,29 @@ This backlog tracks upcoming feature requests, architectural improvements, and b
 * **Goal**: Intelligent AI workout recommendation & progressive overload engine.
 * **User Story**: *"I want the AI coach to analyze my previous performance, RPE, and 1RM metrics to automatically calculate progressive weight/rep targets for my next session, suggest exercise substitutions, and parse natural language workout entries."*
 
+### 2. 📊 Phase 3: Body Metrics & Performance Tracking (The 3rd Pillar)
+* **Goal**: Comprehensive body composition tracking, cardiovascular activity logs, and smart device connectivity.
+* **User Story**: *"I want to track my body metrics over time and view my training holistically across nutrition, strength, and overall performance."*
+* **Key Sub-Pillars**:
+  * **Body Metrics & Scale**: Weight curve, 7-day rolling average, Body Fat %, Lean Mass, and weigh-in log history.
+  * **Activities & Training**: Cardio & aerobic sessions (duration, pace, distance, heart rate, active calories burned).
+  * **Connected Integrations**: Cloud sync for smart scales (e.g., Renpho/Withings) and wearables (Garmin/Fitbit).
+
 ---
 
 ## ✅ Completed
 
+*   **📷 Gemini Multimodal Photo Food Logging**:
+    * **Photo Plate Analysis**: Take or upload a photo of your plate (JPG, PNG, WEBP) directly from the Food Diary.
+    * **Client-Side Image Optimization**: Instant canvas-based compression and auto-resizing (1024px maximum dimension) to ensure snappy, low-bandwidth uploads.
+    * **Gemini 3.7 Flash Nutrition Estimation**: Uses `@google/genai` to automatically estimate meal name, calories, and complete macronutrient breakdown (protein, carbs, fats).
+    * **1-Click Diary Logging**: Automatically pre-fills the logging form with estimated values and meal category for quick diary addition.
+*   **🛡️ Opaque Set Completion Styling (Fix Red Bleed-Through)**:
+    * Replaced semi-transparent emerald styling (`bg-emerald-950/45`) with solid opaque `bg-emerald-950` and isolated the red swipe-to-delete trigger area, resolving the issue where completed set rows appeared dark red/maroon ("Porque está vermelho?").
+*   **📐 Mobile Sticky Top Bar Viewport Offset (Fix Timer Obscured)**:
+    * Offset the active workout sticky header to `sticky top-[4.5rem] sm:top-[4.75rem]` so that elapsed workout duration, volume, and active rest countdown timers sit cleanly below the fixed main app navigation bar without collision on mobile scrolling.
+*   **🎯 Same-Muscle Group Priority on Exercise Swap**:
+    * When initiating an exercise swap mid-workout, `ExerciseLibraryModal` now dynamically pre-selects the replaced exercise's target muscle group, showing matching movement patterns first.
 *   **☁️ Real-Time Cross-Device Sync for Workout History & Custom Exercises**:
     * **Workout History (`/users/{userId}/workoutLogs`)**: Real-time Firestore synchronization for all completed workout logs with automatic migration of guest sessions from `localStorage` upon login.
     * **Custom Exercises (`/users/{userId}/customExercises`)**: Real-time Firestore sync for user-created custom exercises with guest fallback and migration.
@@ -49,9 +68,3 @@ This backlog tracks upcoming feature requests, architectural improvements, and b
 *   **⏱️ Specific Meal Timestamps**: Track the exact time a meal was consumed, with auto-fill to current time, manual picker, and mobile-optimized inline edit layout.
 *   **📅 Date Navigation Arrows (`<` / `>`)**: Added 1-click previous/next day date navigation arrows next to the date picker in the Food Diary header, with a quick reset to "Today".
 *   **✏️ Edit Logged Meal Categories**: Added the ability to reclassify a logged food item's category (Breakfast, Lunch, Dinner, Snack) directly from the dashboard.
-
-## 💡 Future Enhancements (Low Priority)
-
-### 7. 📷 Gemini Multimodal Food Logging
-*   **Goal**: Log meals simply by taking/uploading a photo.
-*   **User Story**: *"I want to upload a photo of my plate, and have Gemini automatically estimate the meal name, calories, and macro breakdown for quick logging."*

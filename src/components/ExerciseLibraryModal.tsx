@@ -9,6 +9,7 @@ interface ExerciseLibraryModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectExercise: (exercise: Exercise) => void;
+  initialMuscleFilter?: TargetMuscleGroup | 'All';
 }
 
 const MUSCLE_GROUPS: TargetMuscleGroup[] = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Full Body'];
@@ -18,6 +19,7 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
   isOpen,
   onClose,
   onSelectExercise,
+  initialMuscleFilter,
 }) => {
   const [exercises, setExercises] = useState<Exercise[]>(() => {
     const saved = localStorage.getItem('custom_exercises');
@@ -33,8 +35,23 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
   });
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedMuscle, setSelectedMuscle] = useState<TargetMuscleGroup | 'All'>('All');
+  const [selectedMuscle, setSelectedMuscle] = useState<TargetMuscleGroup | 'All'>(
+    initialMuscleFilter || 'All'
+  );
   const [selectedCategory, setSelectedCategory] = useState<ExerciseCategory | 'All'>('All');
+
+  // Reset/sync filter when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      if (initialMuscleFilter) {
+        setSelectedMuscle(initialMuscleFilter);
+      } else {
+        setSelectedMuscle('All');
+      }
+      setSelectedCategory('All');
+      setSearchTerm('');
+    }
+  }, [isOpen, initialMuscleFilter]);
 
   // Custom Exercise Creation State
   const [isCreating, setIsCreating] = useState(false);
@@ -174,7 +191,11 @@ export const ExerciseLibraryModal: React.FC<ExerciseLibraryModalProps> = ({
             </div>
             <div>
               <h2 className="text-xl font-bold text-white">Exercise Library</h2>
-              <p className="text-xs text-slate-400">Select an exercise to add to your workout</p>
+              <p className="text-xs text-slate-400">
+                {initialMuscleFilter && initialMuscleFilter !== 'All'
+                  ? `Swapping exercise — showing ${initialMuscleFilter} exercises first`
+                  : 'Select an exercise to add to your workout'}
+              </p>
             </div>
           </div>
           <button
