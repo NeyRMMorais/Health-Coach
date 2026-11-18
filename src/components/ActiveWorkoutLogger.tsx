@@ -8,6 +8,7 @@ import { ExerciseLibraryModal } from './ExerciseLibraryModal';
 import { ExerciseDetailModal } from './ExerciseDetailModal';
 import { ReorderExercisesModal } from './ReorderExercisesModal';
 import { resolveStartingSets } from '../utils/workoutProgression';
+import { updateRoutineTemplateFromSession, detectRoutineModifications } from '../utils/routineUpdater';
 
 export const ACTIVE_WORKOUT_DRAFT_KEY = 'healthcoach_active_workout_draft';
 
@@ -414,6 +415,14 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
   } | null>(null);
   const [collapsedExercises, setCollapsedExercises] = useState<Record<number, boolean>>({});
 
+  const initialRoutineExercisesRef = useRef<WorkoutExercise[]>(
+    initialExercises ? JSON.parse(JSON.stringify(initialExercises)) : []
+  );
+
+  const isRoutineModified =
+    workoutName.includes(' • ') &&
+    detectRoutineModifications(initialRoutineExercisesRef.current, exercises);
+
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const collapseTimeoutsRef = useRef<{ [exIndex: number]: NodeJS.Timeout }>({});
 
@@ -710,42 +719,12 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
   const handleUpdateRoutinePermanently = async () => {
     if (!permanentReplacePill) return;
     try {
-      ['custom_routines', 'workout_routines'].forEach(async (storageKey) => {
-        const savedRoutinesRaw = localStorage.getItem(storageKey);
-        if (!savedRoutinesRaw) return;
-        try {
-          const routines: any[] = JSON.parse(savedRoutinesRaw);
-          let modified = false;
-          let modifiedRoutine: any = null;
-
-          routines.forEach((r: any) => {
-            r.days?.forEach((d: any) => {
-              d.exercises?.forEach((exItem: any) => {
-                if (
-                  exItem.exerciseId === permanentReplacePill.oldId ||
-                  exItem.exerciseName?.toLowerCase() === permanentReplacePill.oldName.toLowerCase()
-                ) {
-                  exItem.exerciseId = permanentReplacePill.newExercise.id;
-                  exItem.exerciseName = permanentReplacePill.newExercise.name;
-                  exItem.targetMuscleGroup = permanentReplacePill.newExercise.targetMuscleGroup;
-                  exItem.category = permanentReplacePill.newExercise.category;
-                  modified = true;
-                  modifiedRoutine = r;
-                }
-              });
-            });
-          });
-
-          if (modified) {
-            localStorage.setItem(storageKey, JSON.stringify(routines));
-            const user = auth.currentUser;
-            if (user && modifiedRoutine && modifiedRoutine.id) {
-              const ref = doc(db, `users/${user.uid}/workoutRoutines`, modifiedRoutine.id);
-              await setDoc(ref, { ...modifiedRoutine, updatedAt: serverTimestamp() }, { merge: true });
-            }
-          }
-        } catch (e) {}
-      });
+      const res = await updateRoutineTemplateFromSession(workoutName, exercises);
+      if (res.success) {
+        initialRoutineExercisesRef.current = JSON.parse(JSON.stringify(exercises));
+        setSessionRoutineSaved(true);
+        setTimeout(() => setSessionRoutineSaved(false), 3000);
+      }
     } catch (e) {
       console.error('Failed to update permanent routine', e);
     }
@@ -754,46 +733,9 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
 
   const handleSaveSessionToRoutineTemplate = async () => {
     try {
-      const parts = workoutName.split(' • ');
-      const rTitle = parts[0]?.trim();
-      const dName = parts[1]?.trim();
-
-      const savedCustom = localStorage.getItem('custom_routines');
-      let customRoutines: WorkoutRoutine[] = savedCustom ? JSON.parse(savedCustom) : [];
-      let matchedRoutine: WorkoutRoutine | null = null;
-
-      customRoutines = customRoutines.map((r) => {
-        if (!rTitle || r.title.toLowerCase() === rTitle.toLowerCase()) {
-          const newDays = (r.days || []).map((d) => {
-            if (!dName || d.dayName.toLowerCase() === dName.toLowerCase()) {
-              return {
-                ...d,
-                exercises: exercises.map((ex) => ({
-                  exerciseId: ex.exerciseId,
-                  exerciseName: ex.exerciseName,
-                  targetMuscleGroup: ex.targetMuscleGroup,
-                  category: ex.category,
-                  targetSets: ex.sets.length || 3,
-                  targetReps: ex.sets[0]?.reps || 10,
-                  targetRestSeconds: ex.restSeconds || 90,
-                })),
-              };
-            }
-            return d;
-          });
-          matchedRoutine = { ...r, days: newDays };
-          return matchedRoutine;
-        }
-        return r;
-      });
-
-      if (matchedRoutine) {
-        localStorage.setItem('custom_routines', JSON.stringify(customRoutines));
-        const user = auth.currentUser;
-        if (user) {
-          const ref = doc(db, `users/${user.uid}/workoutRoutines`, (matchedRoutine as WorkoutRoutine).id);
-          await setDoc(ref, { ...(matchedRoutine as WorkoutRoutine), updatedAt: serverTimestamp() }, { merge: true });
-        }
+      const res = await updateRoutineTemplateFromSession(workoutName, exercises);
+      if (res.success) {
+        initialRoutineExercisesRef.current = JSON.parse(JSON.stringify(exercises));
         setSessionRoutineSaved(true);
         setTimeout(() => setSessionRoutineSaved(false), 3000);
       }
@@ -894,15 +836,23 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
             {workoutName.includes(' • ') && (
               <button
                 onClick={handleSaveSessionToRoutineTemplate}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shadow-sm ${
                   sessionRoutineSaved
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                    : isRoutineModified
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-500/20 ring-2 ring-emerald-400/50'
                     : 'text-slate-400 hover:text-emerald-400 hover:bg-slate-800'
                 }`}
                 title="Save current exercise changes back to the routine template"
               >
                 <Save className="w-3.5 h-3.5" />
-                <span>{sessionRoutineSaved ? 'Routine Updated!' : 'Update Routine'}</span>
+                <span>
+                  {sessionRoutineSaved
+                    ? 'Routine Updated!'
+                    : isRoutineModified
+                    ? 'Save to Routine •'
+                    : 'Update Routine'}
+                </span>
               </button>
             )}
             {exercises.length > 1 && (
@@ -940,9 +890,17 @@ export const ActiveWorkoutLogger: React.FC<ActiveWorkoutLoggerProps> = ({
                 className={`p-2 rounded-xl transition-colors ${
                   sessionRoutineSaved
                     ? 'bg-emerald-500/20 text-emerald-300'
+                    : isRoutineModified
+                    ? 'bg-emerald-600 text-white ring-2 ring-emerald-400/50'
                     : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
                 }`}
-                title="Save current exercise changes back to routine template"
+                title={
+                  sessionRoutineSaved
+                    ? 'Routine Updated!'
+                    : isRoutineModified
+                    ? 'Save changes to routine template'
+                    : 'Update routine template'
+                }
               >
                 <Save className="w-4 h-4 text-emerald-400" />
               </button>

@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Trophy, Dumbbell, Clock, Flame, Award, CheckCircle2, X, Sparkles, ChevronRight, Activity } from 'lucide-react';
+import { Trophy, Dumbbell, Clock, Flame, Award, CheckCircle2, X, Sparkles, ChevronRight, Activity, Save, Check } from 'lucide-react';
 import { WorkoutLog } from '../types';
+import { updateRoutineTemplateFromSession } from '../utils/routineUpdater';
 
 interface WorkoutCompletionModalProps {
   isOpen: boolean;
@@ -16,7 +17,27 @@ export const WorkoutCompletionModal: React.FC<WorkoutCompletionModalProps> = ({
   onClose,
   onViewHistory,
 }) => {
+  const [isUpdatingTemplate, setIsUpdatingTemplate] = useState(false);
+  const [isTemplateUpdated, setIsTemplateUpdated] = useState(false);
+
   if (!isOpen || !workoutLog) return null;
+
+  const isRoutineWorkout = Boolean(workoutLog.name && workoutLog.name.includes(' • '));
+
+  const handleUpdateTemplate = async () => {
+    if (!workoutLog || isTemplateUpdated || isUpdatingTemplate) return;
+    setIsUpdatingTemplate(true);
+    try {
+      const res = await updateRoutineTemplateFromSession(workoutLog.name, workoutLog.exercises);
+      if (res.success) {
+        setIsTemplateUpdated(true);
+      }
+    } catch (e) {
+      console.error('Failed to update routine from completion modal', e);
+    } finally {
+      setIsUpdatingTemplate(false);
+    }
+  };
 
   const totalSets = workoutLog.exercises.reduce((acc, ex) => {
     return acc + ex.sets.filter((s) => s.completed).length;
@@ -156,6 +177,50 @@ export const WorkoutCompletionModal: React.FC<WorkoutCompletionModalProps> = ({
                 })}
               </div>
             </div>
+
+            {/* Update Routine Template Section (if session originated from a routine) */}
+            {isRoutineWorkout && (
+              <div className="p-4 bg-slate-950/70 border border-emerald-500/30 rounded-2xl space-y-2.5 shadow-inner">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Save className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span className="text-xs font-bold text-slate-200">
+                      Update Routine Template?
+                    </span>
+                  </div>
+                  {isTemplateUpdated && (
+                    <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" /> Updated!
+                    </span>
+                  )}
+                </div>
+
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Save this session's exercises ({workoutLog.exercises.length} movements) permanently to{' '}
+                  <span className="text-emerald-300 font-semibold">{workoutLog.name}</span> for future sessions.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={handleUpdateTemplate}
+                  disabled={isTemplateUpdated || isUpdatingTemplate}
+                  className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm ${
+                    isTemplateUpdated
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 cursor-default'
+                      : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-500/20'
+                  }`}
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>
+                    {isUpdatingTemplate
+                      ? 'Saving Template...'
+                      : isTemplateUpdated
+                      ? 'Template Updated Successfully ✨'
+                      : 'Update Routine Day Template'}
+                  </span>
+                </button>
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">

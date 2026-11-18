@@ -30,6 +30,11 @@ An intelligent, AI-powered health and nutrition coach application built with Rea
 - **📅 1-Click Date Navigation Arrows (`<` / `>`)**: Navigate day-by-day in the Food Diary header with previous/next day arrow controls and a quick reset to "Today".
 - **🏋️ Strength Coach & Gym Tracker (Phase 1)**:
   - **Set-by-Set Logger**: Streamlined 6-column set tracker (`Set`, `Weight kg`, `Reps`, `RPE @1–@10`, `Done`, `Delete`).
+  - **🛡️ Opaque Set Completion**: Solid emerald styling (`bg-emerald-950`) isolated from the delete layer, eliminating red background bleed-through.
+  - **📐 Mobile Sticky Header Offset**: Responsive viewport offset (`top-[4.5rem] sm:top-[4.75rem]`) keeping active workout duration, volume, and rest timers clearly visible below the navigation bar.
+  - **🎯 Same-Muscle Group Swap Priority**: Exercise substitution dynamically pre-filters the library to matching muscle groups and movement patterns.
+  - **👆 Universal Swipe-to-Delete**: Touch-delegated swipe gesture (`touch-pan-y`) across entire set rows on mobile devices.
+  - **🔊 Mobile AudioContext Autoplay Unlock**: Seamless Web Audio initialization on touch gestures, guaranteeing rest timer completion chimes are heard on iOS and Android.
   - **Per-Exercise Rest Timers**: Preset timer options ($30\text{s}$ to $300\text{s}$) + custom input capability with floating timer overlays and Web Audio synthesized completion beeps.
   - **Multi-Day Schedule Routines**: Build training programs with multi-day structures (Workout Sessions, Cardio Days, Rest Days) and persistent template deletion.
   - **🗺️ Anatomical Muscle Heatmap & Recovery Visualizer**: High-fidelity 2D vector anatomical body diagram (Front Anterior & Back Posterior views) with 7-day fatigue calculations, localized recovery levels (Fresh, Recovering, Fatigued), and AI readiness recommendations.
@@ -81,6 +86,9 @@ An intelligent, AI-powered health and nutrition coach application built with Rea
 
 ## ☁️ Deploy to GCP Cloud Run Production
 
+> [!NOTE]
+> Pushing changes to GitHub (`main`) stores the codebase in source control. Because there is no automated CI/CD pipeline configured, deployments to production are executed on-demand via the Google Cloud CLI.
+
 To deploy updates directly to GCP Cloud Run (`europe-west2`):
 
 ```bash
@@ -89,6 +97,10 @@ gcloud run deploy health-coach \
   --region europe-west2 \
   --project health-coach-501615
 ```
+
+> [!TIP]
+> **Mobile PWA / Browser Cache Refresh**: After deploying a new revision, mobile devices (especially if saved to the Home Screen) may hold cached JavaScript bundles. Perform a hard refresh or close and reopen the app to load the new container assets immediately.
+
 
 ---
 

@@ -22,6 +22,14 @@ This backlog tracks upcoming feature requests, architectural improvements, and b
 
 ## ✅ Completed
 
+*   **💾 Permanent Routine Template Saving (Mid-Workout & End-of-Session)**:
+    * **Centralized Routine Updater (`routineUpdater.ts`)**: Automatically matches routine days in `custom_routines` or clones from `DEFAULT_ROUTINES`, updating target exercises, sets, reps, and rest intervals across `localStorage` and Cloud Firestore (`/users/{uid}/workoutRoutines`).
+    * **Active Session Change Detection**: Automatically detects exercise additions, deletions, swaps, and reorders, prominently highlighting the "Save to Routine •" action button in the active top bar.
+    * **End-of-Session Completion Card**: Dedicated 1-click update card on `WorkoutCompletionModal` allowing users to permanently apply their session's exercise structure to that routine day before leaving the summary screen.
+*   **🚀 Production Cloud Run Deployment & Live Cache Verification**:
+    * Deployed revision `health-coach-00047-vkz` to Google Cloud Run in `europe-west2` serving 100% of production traffic.
+    * Replaced previous cached bundles with fresh container assets (`index-BQm21YgK.js` / `index-CFlk52ch.css`).
+    * Verified live production serving and mobile viewport responsiveness.
 *   **📷 Gemini Multimodal Photo Food Logging**:
     * **Photo Plate Analysis**: Take or upload a photo of your plate (JPG, PNG, WEBP) directly from the Food Diary.
     * **Client-Side Image Optimization**: Instant canvas-based compression and auto-resizing (1024px maximum dimension) to ensure snappy, low-bandwidth uploads.
