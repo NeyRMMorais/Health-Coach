@@ -6,17 +6,7 @@ This backlog tracks upcoming feature requests, architectural improvements, and b
 
 ## 📋 Active Backlog
 
-### 1. 🤖 Phase 2: AI Strength Coach Engine
-* **Goal**: Intelligent AI workout recommendation & progressive overload engine.
-* **User Story**: *"I want the AI coach to analyze my previous performance, RPE, and 1RM metrics to automatically calculate progressive weight/rep targets for my next session, suggest exercise substitutions, and parse natural language workout entries."*
-
-### 2. 📊 Phase 3: Body Metrics & Performance Tracking (The 3rd Pillar)
-* **Goal**: Comprehensive body composition tracking, cardiovascular activity logs, and smart device connectivity.
-* **User Story**: *"I want to track my body metrics over time and view my training holistically across nutrition, strength, and overall performance."*
-* **Key Sub-Pillars**:
-  * **Body Metrics & Scale**: Weight curve, 7-day rolling average, Body Fat %, Lean Mass, and weigh-in log history.
-  * **Activities & Training**: Cardio & aerobic sessions (duration, pace, distance, heart rate, active calories burned).
-  * **Connected Integrations**: Cloud sync for smart scales (e.g., Renpho/Withings) and wearables (Garmin/Fitbit).
+*No active items yet. Ready for new priorities.*
 
 ---
 
