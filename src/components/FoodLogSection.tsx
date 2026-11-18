@@ -89,6 +89,7 @@ export default function FoodLogSection({
   const [isRecipeSaved, setIsRecipeSaved] = useState<boolean>(false);
   const [selectedImage, setSelectedImage] = useState<{ dataUrl: string; name: string; sizeKb: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   // Client-side image downscaling & compression helper (max 1024x1024, quality 0.8)
   const compressImage = (file: File): Promise<{ dataUrl: string; name: string; sizeKb: number }> => {
@@ -155,6 +156,9 @@ export default function FoodLogSection({
     } finally {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
+      }
+      if (cameraInputRef.current) {
+        cameraInputRef.current.value = '';
       }
     }
   };
@@ -726,7 +730,15 @@ export default function FoodLogSection({
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 transition resize-none"
               />
 
-              {/* Hidden native file input for camera & photo gallery */}
+              {/* Hidden native file inputs for direct camera capture & photo gallery */}
+              <input
+                type="file"
+                ref={cameraInputRef}
+                onChange={handleFileChange}
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+              />
               <input
                 type="file"
                 ref={fileInputRef}
@@ -735,17 +747,27 @@ export default function FoodLogSection({
                 className="hidden"
               />
 
-              {/* Annex a picture pill & attached badge */}
+              {/* Take photo / Upload photo pills & attached badge */}
               <div className="mt-2 flex items-center flex-wrap gap-2">
                 {!selectedImage ? (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full text-xs font-medium transition cursor-pointer border border-slate-200/80 shadow-2xs hover:border-slate-300 active:scale-98"
-                  >
-                    <Camera className="h-3.5 w-3.5 text-emerald-600" />
-                    <span>Annex a picture</span>
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => cameraInputRef.current?.click()}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-full text-xs font-medium transition cursor-pointer border border-emerald-200 shadow-2xs hover:border-emerald-300 active:scale-98"
+                    >
+                      <Camera className="h-3.5 w-3.5 text-emerald-600" />
+                      <span>Take photo</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full text-xs font-medium transition cursor-pointer border border-slate-200/80 shadow-2xs hover:border-slate-300 active:scale-98"
+                    >
+                      <Paperclip className="h-3.5 w-3.5 text-slate-500" />
+                      <span>Upload photo</span>
+                    </button>
+                  </>
                 ) : (
                   <div className="inline-flex items-center gap-2 pl-1.5 pr-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-full text-xs font-medium shadow-2xs">
                     <img
