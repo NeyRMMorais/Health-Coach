@@ -83,6 +83,7 @@ export default function FoodLogSection({
   // AI assistant input & image attachment
   const [aiInput, setAiInput] = useState<string>('');
   const [aiPromptUsed, setAiPromptUsed] = useState<string>('');
+  const [aiBreakdown, setAiBreakdown] = useState<string>('');
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [isRecipeSaved, setIsRecipeSaved] = useState<boolean>(false);
@@ -313,7 +314,8 @@ export default function FoodLogSection({
       });
 
       if (!res.ok) {
-        throw new Error('Failed to estimate calories from meal.');
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error || 'AI service could not analyze this meal. Please try again or log manually.');
       }
 
       const parsed = await res.json();
@@ -324,6 +326,7 @@ export default function FoodLogSection({
         : aiInput.trim();
 
       setAiPromptUsed(promptRecord);
+      setAiBreakdown(parsed.breakdown || '');
       setIsRecipeSaved(false);
       setName(parsed.name || '');
       setCalories(String(parsed.calories ?? ''));
@@ -333,9 +336,9 @@ export default function FoodLogSection({
 
       // Switch to manual input to let them review and submit
       setActiveTab('manual');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setAiError('Gemini could not analyze this meal. Please try again or log manually.');
+      setAiError(err?.message || 'AI service could not analyze this meal. Please try again or log manually.');
     } finally {
       setIsAnalyzing(false);
     }
@@ -815,6 +818,11 @@ export default function FoodLogSection({
                 <p className="text-xs italic text-slate-700 bg-white/70 p-2 rounded-lg border border-amber-100/80 leading-relaxed">
                   "{aiPromptUsed}"
                 </p>
+                {aiBreakdown && (
+                  <p className="text-xs text-amber-900/90 bg-amber-100/50 p-2 rounded-lg border border-amber-200/60 leading-relaxed">
+                    <span className="font-semibold">AI Portion Assumptions:</span> {aiBreakdown}
+                  </p>
+                )}
               </div>
             )}
 

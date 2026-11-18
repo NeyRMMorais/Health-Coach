@@ -57,7 +57,8 @@ Day 4: Legs & Core - Barbell Squats 4x8, Romanian Deadlifts 3x10, Leg Extension 
       });
 
       if (!response.ok) {
-        throw new Error('Failed to parse routine. Please check your network or try again.');
+        const errData = await response.json().catch(() => null);
+        throw new Error(errData?.error || 'AI routine parser is temporarily unavailable. Please try again later.');
       }
 
       const data = await response.json();

@@ -116,7 +116,8 @@ export default function MealGenerator({
       });
 
       if (!res.ok) {
-        throw new Error('Failed to fetch healthy meal recommendations from server.');
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error || 'AI meal suggestions are temporarily unavailable. Please try again later.');
       }
 
       const data = await res.json();
@@ -124,9 +125,9 @@ export default function MealGenerator({
       if (data.length > 0) {
         setExpandedIndex(0); // expand first item by default
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError('Failed to generate suggestions. Please ensure your Gemini API key is configured correctly.');
+      setError(err?.message || 'Failed to generate suggestions. Please try again later.');
     } finally {
       setIsLoading(false);
     }
