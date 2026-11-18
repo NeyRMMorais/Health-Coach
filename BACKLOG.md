@@ -12,6 +12,14 @@ This backlog tracks upcoming feature requests, architectural improvements, and b
 
 ## ✅ Completed
 
+*   **📷 Direct Mobile Camera Capture (`Take photo` + `Upload photo`)**:
+    * **Dedicated Rear Camera Input (`FoodLogSection.tsx`)**: Added `cameraInputRef` (`capture="environment"`) for 1-tap camera opening on mobile alongside `Upload photo` for gallery/desktop selection, reusing client-side compression and waiting for optional user notes before AI analysis.
+*   **🤖 Gemini 3.8 Flash Upgrade, Prompt Accuracy & Explicit Error Handling**:
+    * **Model Upgrade (`gemini.config.json`, `server.ts`)**: Upgraded all three AI endpoints (`/api/gemini/estimate`, `/api/gemini/suggest-meals`, `/api/gemini/parse-routine`) from deprecated `gemini-3.7-flash` to `gemini-3.8-flash`.
+    * **No Silent Fallbacks**: Removed hardcoded local fallbacks in `server.ts`; API/billing/config failures now return explicit `502`/`503` errors surfaced cleanly in `FoodLogSection.tsx`, `MealGenerator.tsx`, and `AiWorkoutArchitectModal.tsx`.
+    * **Dietitian Prompts & Portion Breakdown**: Added portion/cooking-fat/calorie-math (`4P + 4C + 9F`) rules and an **AI Portion Assumptions** (`breakdown`) display in `FoodLogSection.tsx`.
+*   **📚 Docs-as-Code & Repository Hygiene**:
+    * Added `AGENTS.md`, `docs/PRODUCT.md`, and `docs/ARCHITECTURE.md`; reset active backlog; removed temporary root `.log` files and stale branches.
 *   **💾 Permanent Routine Template Saving (Mid-Workout & End-of-Session)**:
     * **Centralized Routine Updater (`routineUpdater.ts`)**: Automatically matches routine days in `custom_routines` or clones from `DEFAULT_ROUTINES`, updating target exercises, sets, reps, and rest intervals across `localStorage` and Cloud Firestore (`/users/{uid}/workoutRoutines`).
     * **Active Session Change Detection**: Automatically detects exercise additions, deletions, swaps, and reorders, prominently highlighting the "Save to Routine •" action button in the active top bar.
